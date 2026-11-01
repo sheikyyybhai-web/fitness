@@ -7,6 +7,8 @@
   <meta name="description" content="Fitness Metric helps users calculate body composition, understand daily nutritional requirements, explore a comprehensive food database, master exercise biomechanics, and track personal fitness progress.">
 
   <!-- Favicon: Geometric Metric Logo -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="apple-touch-icon" href="assets/logo.svg">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 36 36%22><polygon points=%2218,2 32,7 32,22 18,34 4,22 4,7%22 fill=%22%23DC2626%22/><polygon points=%2218,3.6 30.5,8 30.5,21.2 18,32 5.5,21.2 5.5,8%22 stroke=%22%23F87171%22 stroke-width=%220.8%22 stroke-opacity=%220.6%22 fill=%22none%22/><path d=%22M 10 10 L 10 26 M 10 10 L 18 10 M 10 17 L 16 17%22 stroke=%22%23FEE2E2%22 stroke-width=%222.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/><path d=%22M 17 26 L 20 15 L 24 21 L 28 12 L 28 26%22 stroke=%22white%22 stroke-width=%222.2%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/><circle cx=%2228%22 cy=%2212%22 r=%222.2%22 fill=%22%23FEE2E2%22 stroke=%22%23DC2626%22 stroke-width=%220.8%22/><circle cx=%2210%22 cy=%2210%22 r=%221.6%22 fill=%22%23FEE2E2%22/><polygon points=%2218,17 19.5,18.5 18,20 16.5,18.5%22 fill=%22%23FEE2E2%22/></svg>">
 
   <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
@@ -96,11 +98,15 @@
     <!-- Loading skeleton until React mounts -->
     <div class="min-h-screen flex items-center justify-center bg-fm-bg">
       <div class="flex flex-col items-center gap-3">
-        <svg class="animate-spin w-8 h-8 text-fm-forest" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="text-sm font-semibold tracking-wide text-fm-muted">Loading Fitness Metric...</p>
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 p-2 shadow-lg flex items-center justify-center animate-pulse">
+          <svg viewBox="0 0 36 36" fill="none" class="w-10 h-10">
+            <polygon points="18,2 32,7 32,22 18,34 4,22 4,7" fill="#DC2626"/>
+            <path d="M 10 10 L 10 26 M 10 10 L 18 10 M 10 17 L 16 17" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M 17 26 L 20 15 L 24 21 L 28 12 L 28 26" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p class="text-base font-extrabold tracking-tight text-red-600">Fitness Metric</p>
+        <p class="text-xs text-fm-muted font-medium">Evidence-Based Performance</p>
       </div>
     </div>
   </div>
@@ -10426,20 +10432,41 @@
           =================================================================== */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Navigation Bar */}
-            <header className="sticky top-0 z-30 bg-gradient-to-r from-red-800 via-red-700 to-rose-900 border-b-2 border-red-900 px-4 sm:px-6 py-3 flex items-center justify-between shadow-md text-white">
-              <div className="flex items-center gap-3">
+            <header className="sticky top-0 z-30 bg-gradient-to-r from-red-800 via-red-700 to-rose-900 border-b-2 border-red-900 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shadow-md text-white">
+              <div className="flex items-center gap-2.5 sm:gap-3">
                 <button 
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2 rounded-lg hover:bg-white/10 text-white"
+                  className="md:hidden p-1.5 rounded-lg hover:bg-white/10 text-white"
+                  title="Toggle Navigation Menu"
                 >
                   <Icon name="menu" className="w-5 h-5" />
                 </button>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-base md:text-lg tracking-tight text-white drop-shadow-sm">
+                
+                {/* PROMINENT FITNESS METRIC LOGO & BRAND */}
+                <div 
+                  onClick={() => navigateTo('dashboard')}
+                  className="flex items-center gap-2 sm:gap-2.5 cursor-pointer hover:opacity-90 transition-opacity"
+                  title="Fitness Metric"
+                >
+                  <Icon name="logo" className="w-8 h-8 sm:w-9 sm:h-9 filter drop-shadow flex-shrink-0" />
+                  <div className="flex flex-col">
+                    <span className="font-black text-base sm:text-xl tracking-tight text-white leading-tight drop-shadow-sm">
+                      Fitness Metric
+                    </span>
+                    <span className="hidden sm:inline text-[9px] font-extrabold text-red-200 uppercase tracking-widest leading-none">
+                      Evidence-Based Performance
+                    </span>
+                  </div>
+                </div>
+
+                {/* Section Breadcrumb Indicator */}
+                <div className="hidden lg:flex items-center gap-2 pl-3 border-l border-white/20">
+                  <span className="text-xs font-bold tracking-wide text-red-100 bg-white/10 px-2.5 py-1 rounded-md">
                     {currentRoute === 'dashboard' && 'Personal Overview'}
                     {currentRoute === 'calculators' && 'Body Composition Calculators'}
                     {currentRoute === 'foods' && 'Food Nutrition Explorer'}
                     {currentRoute === 'food-log' && 'Daily Nutrition Tracker'}
+                    {currentRoute === 'diet-planner' && 'AI Diet Planner'}
                     {currentRoute === 'exercises' && 'Exercise Library & Biomechanics'}
                     {currentRoute === 'progress' && 'Progress Trends & History'}
                     {currentRoute.startsWith('admin') && 'Administration Console'}
@@ -10494,19 +10521,29 @@
 
             {/* Mobile Navigation Drawer */}
             {mobileMenuOpen && (
-              <div className="md:hidden bg-fm-card border-b border-fm-border px-4 py-3 space-y-2">
-                <button onClick={() => navigateTo('dashboard')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Dashboard</button>
-                <button onClick={() => navigateTo('calculators')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">12 Body Calculators</button>
-                <button onClick={() => navigateTo('foods')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Food & Nutrition Explorer</button>
-                <button onClick={() => navigateTo('food-log')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Daily Nutrition Tracker</button>
-                  <button onClick={() => navigateTo('diet-planner')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 flex items-center justify-between">
-                    <span>🤖 AI Diet Planner</span>
-                    <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-extrabold">AI</span>
-                  </button>
-                <button onClick={() => navigateTo('exercises')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Exercise & Muscle Explorer</button>
-                <button onClick={() => navigateTo('progress')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Progress & History</button>
-                <button onClick={() => navigateTo('admin')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-fm-forest hover:bg-fm-surfaceSubtle">Admin Dashboard</button>
-                <button onClick={() => navigateTo('settings')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Settings & Supabase</button>
+              <div className="md:hidden bg-fm-card border-b border-fm-border px-4 py-3 space-y-2 shadow-lg">
+                <div 
+                  onClick={() => { navigateTo('dashboard'); setMobileMenuOpen(false); }}
+                  className="flex items-center gap-2.5 pb-2.5 mb-1 border-b border-fm-border cursor-pointer hover:bg-fm-surfaceSubtle p-2 rounded-lg"
+                >
+                  <Icon name="logo" className="w-8 h-8 flex-shrink-0" />
+                  <div>
+                    <span className="font-black text-base text-red-600 block leading-tight">Fitness Metric</span>
+                    <span className="text-[9px] font-extrabold text-red-500 uppercase tracking-wider">Evidence-Based Performance</span>
+                  </div>
+                </div>
+                <button onClick={() => { navigateTo('dashboard'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Dashboard</button>
+                <button onClick={() => { navigateTo('calculators'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">12 Body Calculators</button>
+                <button onClick={() => { navigateTo('foods'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Food & Nutrition Explorer</button>
+                <button onClick={() => { navigateTo('food-log'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Daily Nutrition Tracker</button>
+                <button onClick={() => { navigateTo('diet-planner'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 flex items-center justify-between">
+                  <span>🤖 AI Diet Planner</span>
+                  <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-extrabold">AI</span>
+                </button>
+                <button onClick={() => { navigateTo('exercises'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Exercise & Muscle Explorer</button>
+                <button onClick={() => { navigateTo('progress'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Progress & History</button>
+                <button onClick={() => { navigateTo('admin'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-fm-forest hover:bg-fm-surfaceSubtle">Admin Dashboard</button>
+                <button onClick={() => { navigateTo('settings'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Settings & Supabase</button>
               </div>
             )}
 
@@ -11031,12 +11068,20 @@
         <div className="space-y-6">
           {/* Welcome Banner */}
           <div className="bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div>
-              <span className="text-xs font-bold text-fm-forest uppercase tracking-wider">Welcome back</span>
-              <h1 className="text-2xl font-extrabold text-fm-text mt-0.5">{user.displayName}</h1>
-              <p className="text-xs text-fm-muted mt-1">
-                Goal: <span className="font-semibold text-fm-text capitalize">{user.fitnessGoal.replace('_', ' ')}</span> • Activity: <span className="font-semibold text-fm-text capitalize">{user.activityLevel.replace('_', ' ')}</span>
-              </p>
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <Icon name="logo" className="w-8 h-8" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-fm-forest uppercase tracking-wider">Welcome back</span>
+                  <span className="text-[10px] font-extrabold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">Fitness Metric</span>
+                </div>
+                <h1 className="text-2xl font-extrabold text-fm-text mt-0.5">{user.displayName}</h1>
+                <p className="text-xs text-fm-muted mt-1">
+                  Goal: <span className="font-semibold text-fm-text capitalize">{user.fitnessGoal.replace('_', ' ')}</span> • Activity: <span className="font-semibold text-fm-text capitalize">{user.activityLevel.replace('_', ' ')}</span>
+                </p>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button 
