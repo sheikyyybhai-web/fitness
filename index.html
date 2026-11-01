@@ -9976,7 +9976,7 @@
       // Supabase credentials configuration state
       const [supabaseConfig, setSupabaseConfig] = useState(() => {
         const url = localStorage.getItem('fitness_metric_supabase_url') || '';
-        const key = localStorage.getItem('fitness_metric_supabase_anon_key') || '';
+        const key = localStorage.getItem('fitness_metric_supabase_anon_key') || 'sb_publishable_P8xlTiqHQVPDNF4Eve1hgg_Gn5cYjR6';
         return {
           url,
           anonKey: key,
@@ -10037,62 +10037,39 @@
       const [selectedExercise, setSelectedExercise] = useState(null);
       const [selectedMuscle, setSelectedMuscle] = useState(null);
 
-      // Food Logs (Daily Nutrition Tracker)
+      // Food Logs (Daily Nutrition Tracker) - Clean initial state (no mock data)
       const [foodLogs, setFoodLogs] = useState(() => {
         try {
-          const saved = localStorage.getItem('fm_food_logs');
-          return saved ? JSON.parse(saved) : [
-            {
-              id: 'l-1',
-              mealType: 'breakfast',
-              foodName: 'Whole Egg (Large, Boiled)',
-              quantityG: 100,
-              cal: 155,
-              protein: 12.6,
-              carbs: 1.1,
-              fat: 10.6,
-              fiber: 0.0,
-              date: new Date().toISOString().split('T')[0]
-            },
-            {
-              id: 'l-2',
-              mealType: 'breakfast',
-              foodName: 'Rolled Oats (Raw)',
-              quantityG: 50,
-              cal: 195,
-              protein: 8.5,
-              carbs: 33.2,
-              fat: 3.5,
-              fiber: 5.3,
-              date: new Date().toISOString().split('T')[0]
-            },
-            {
-              id: 'l-3',
-              mealType: 'lunch',
-              foodName: 'Skinless Chicken Breast (Cooked)',
-              quantityG: 150,
-              cal: 248,
-              protein: 46.5,
-              carbs: 0.0,
-              fat: 5.4,
-              fiber: 0.0,
-              date: new Date().toISOString().split('T')[0]
+          // One-time clear of legacy mock data from localStorage
+          if (localStorage.getItem('fm_mock_cleared_v1') !== 'true') {
+            const savedLogs = localStorage.getItem('fm_food_logs');
+            if (savedLogs && (savedLogs.includes('l-1') || savedLogs.includes('Whole Egg (Large, Boiled)'))) {
+              localStorage.removeItem('fm_food_logs');
             }
-          ];
+            const savedWeight = localStorage.getItem('fm_weight_history');
+            if (savedWeight && savedWeight.includes('2026-09-01')) {
+              localStorage.removeItem('fm_weight_history');
+            }
+            const savedAudit = localStorage.getItem('fm_audit_logs');
+            if (savedAudit && savedAudit.includes('a-1')) {
+              localStorage.removeItem('fm_audit_logs');
+            }
+            const savedSchedule = localStorage.getItem('fm_workout_schedule');
+            if (savedSchedule && savedSchedule.includes('"completed":true')) {
+              localStorage.removeItem('fm_workout_schedule');
+            }
+            localStorage.setItem('fm_mock_cleared_v1', 'true');
+          }
+          const saved = localStorage.getItem('fm_food_logs');
+          return saved ? JSON.parse(saved) : [];
         } catch { return []; }
       });
 
-      // Weight History State
+      // Weight History State - Clean initial state (no mock dates)
       const [weightHistory, setWeightHistory] = useState(() => {
         try {
           const saved = localStorage.getItem('fm_weight_history');
-          return saved ? JSON.parse(saved) : [
-            { date: '2026-09-01', weight: 76.5 },
-            { date: '2026-09-15', weight: 76.0 },
-            { date: '2026-10-01', weight: 75.3 },
-            { date: '2026-10-15', weight: 74.8 },
-            { date: '2026-10-28', weight: 74.5 }
-          ];
+          return saved ? JSON.parse(saved) : [];
         } catch { return []; }
       });
 
@@ -10104,22 +10081,24 @@
         } catch { return []; }
       });
 
-      // Admin Audit Logs
+      // Admin Audit Logs - Clean initial state
       const [auditLogs, setAuditLogs] = useState(() => {
         try {
           const saved = localStorage.getItem('fm_audit_logs');
-          return saved ? JSON.parse(saved) : [
-            { id: 'a-1', action: 'SYSTEM_INIT', entity: 'System', date: '2026-01-01', details: 'Initialized standard food and exercise catalogs.' }
-          ];
+          return saved ? JSON.parse(saved) : [];
         } catch { return []; }
       });
 
-      // Weekly Workout Routine
+      // Weekly Workout Routine - Clean initial state (no mock completed checks)
       const [workoutSchedule, setWorkoutSchedule] = useState(() => {
+        try {
+          const saved = localStorage.getItem('fm_workout_schedule');
+          if (saved) return JSON.parse(saved);
+        } catch {}
         return [
-          { day: 'Monday', title: 'Push Day (Chest, Shoulders & Triceps)', exercises: ['Barbell Flat Bench Press', 'Overhead Barbell Shoulder Press (OHP)'], completed: true },
-          { day: 'Tuesday', title: 'Rest & Active Recovery', exercises: [], completed: true },
-          { day: 'Wednesday', title: 'Pull Day (Lats & Biceps)', exercises: ['Pull-Up / Chin-Up'], completed: true },
+          { day: 'Monday', title: 'Push Day (Chest, Shoulders & Triceps)', exercises: ['Barbell Flat Bench Press', 'Overhead Barbell Shoulder Press (OHP)'], completed: false },
+          { day: 'Tuesday', title: 'Rest & Active Recovery', exercises: [], completed: false },
+          { day: 'Wednesday', title: 'Pull Day (Lats & Biceps)', exercises: ['Pull-Up / Chin-Up'], completed: false },
           { day: 'Thursday', title: 'Rest & Mobility', exercises: [], completed: false },
           { day: 'Friday', title: 'Lower Body & Posterior Chain', exercises: ['Barbell Back Squat', 'Romanian Deadlift (RDL)', 'Barbell Hip Thrust'], completed: false },
           { day: 'Saturday', title: 'Core & Conditioning', exercises: [], completed: false },
@@ -13617,6 +13596,158 @@
         </div>
       );
     }
+    
+    // =========================================================================
+    // VIEW 6: PROGRESS ANALYTICS & CHECK-IN TRACKER
+    // =========================================================================
+    function ProgressView({ weightHistory = [], onAddWeight, user, displayWeight }) {
+      const [newWeight, setNewWeight] = useState('');
+      const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+
+      const latestWeight = weightHistory.length > 0 
+        ? weightHistory[weightHistory.length - 1].weight 
+        : (user?.currentWeightKg || 74.5);
+
+      return (
+        <div className="space-y-6">
+          <div className="border-b border-fm-border pb-4">
+            <h1 className="text-2xl font-extrabold text-fm-text">Progress Analytics & Check-ins</h1>
+            <p className="text-xs text-fm-muted">Track body composition trends over multi-month milestones.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Record New Check-in Form */}
+            <div className="bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card space-y-4">
+              <h3 className="text-base font-bold text-fm-text border-b border-fm-border pb-2">Record Weight Check-in</h3>
+              
+              <div>
+                <label className="text-xs font-bold text-fm-text block mb-1">Date</label>
+                <input 
+                  type="date" 
+                  value={newDate} 
+                  onChange={e => setNewDate(e.target.value)} 
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-fm-border bg-fm-surfaceSubtle font-medium text-fm-text"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-fm-text block mb-1">Body Weight (kg)</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  placeholder={latestWeight ? `e.g. ${latestWeight}` : 'e.g. 74.5'}
+                  value={newWeight} 
+                  onChange={e => setNewWeight(e.target.value)} 
+                  className="w-full px-3 py-2 text-sm font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle text-fm-text"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!newWeight || isNaN(parseFloat(newWeight))) return;
+                  onAddWeight(newDate, parseFloat(newWeight));
+                  setNewWeight('');
+                }}
+                className="w-full py-2.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all"
+              >
+                Log Check-in Entry
+              </button>
+            </div>
+
+            {/* Historical Entries Table & Trend Chart */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* Responsive SVG Sparkline Chart */}
+              <div className="bg-fm-card p-5 rounded-2xl border border-fm-border shadow-fm-card">
+                <div className="flex items-center justify-between border-b border-fm-border pb-3 mb-3">
+                  <div>
+                    <h3 className="text-base font-bold text-fm-text">Weight Trajectory Chart</h3>
+                    <p className="text-xs text-fm-muted">Multi-month body mass progression</p>
+                  </div>
+                  <span className="text-xs font-bold text-red-700 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+                    Latest: {displayWeight(latestWeight)}
+                  </span>
+                </div>
+                
+                {(() => {
+                  if (weightHistory.length < 2) {
+                    return (
+                      <div className="py-10 px-4 text-center rounded-xl border border-dashed border-stone-200 bg-stone-50/60 space-y-2">
+                        <span className="text-2xl block">⚖️</span>
+                        <p className="text-xs font-bold text-fm-text">No weight trajectory graph yet</p>
+                        <p className="text-[11px] text-fm-muted max-w-sm mx-auto">
+                          Record at least 2 check-ins using the form on the left to plot your body weight trendline over time.
+                        </p>
+                      </div>
+                    );
+                  }
+                  const weights = weightHistory.map(w => w.weight);
+                  const minW = Math.min(...weights) - 1;
+                  const maxW = Math.max(...weights) + 1;
+                  const range = maxW - minW || 1;
+                  const svgW = 500;
+                  const svgH = 140;
+                  const pad = 30;
+                  
+                  const points = weightHistory.map((w, i) => {
+                    const x = pad + (i / (weightHistory.length - 1)) * (svgW - pad * 2);
+                    const y = svgH - pad - ((w.weight - minW) / range) * (svgH - pad * 2);
+                    return { x, y, ...w };
+                  });
+                  
+                  const dPath = points.reduce((acc, pt, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`, '');
+                  const areaPath = `${dPath} L ${points[points.length-1].x} ${svgH - pad} L ${points[0].x} ${svgH - pad} Z`;
+                  
+                  return (
+                    <div>
+                      <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-40 overflow-visible">
+                        <defs>
+                          <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#DC2626" stopOpacity="0.25" />
+                            <stop offset="100%" stopColor="#DC2626" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        <path d={areaPath} fill="url(#weightGrad)" />
+                        <path d={dPath} fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        {points.map((pt, i) => (
+                          <g key={i}>
+                            <circle cx={pt.x} cy={pt.y} r="4" fill="#FFFFFF" stroke="#DC2626" strokeWidth="2.5" />
+                            <text x={pt.x} y={pt.y - 8} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#202522">
+                              {pt.weight}
+                            </text>
+                            <text x={pt.x} y={svgH - 12} textAnchor="middle" fontSize="8" fill="#667069">
+                              {pt.date.slice(5)}
+                            </text>
+                          </g>
+                        ))}
+                      </svg>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Log Table */}
+              <div className="bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card">
+                <h3 className="text-base font-bold text-fm-text border-b border-fm-border pb-2 mb-4">Historical Check-in Log</h3>
+                {weightHistory.length === 0 ? (
+                  <p className="text-xs text-fm-muted text-center py-6">No historical entries logged yet. Your recorded check-ins will appear here.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {weightHistory.slice().reverse().map((entry, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-fm-surfaceSubtle text-xs border border-fm-border">
+                        <span className="font-semibold text-fm-text">{entry.date}</span>
+                        <span className="font-extrabold text-red-600 text-sm">{displayWeight(entry.weight)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     function AdminDashboardView({ currentUser, foods, exercises, auditLogs, onSaveFood, onDeleteFood, onTogglePublish, onImportBatch }) {
       const [adminTab, setAdminTab] = useState('foods'); // 'foods' | 'import' | 'audit'
       const [editingFood, setEditingFood] = useState(null);

@@ -1,0 +1,22 @@
+# Environment and local credentials (never commit sensitive keys)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+
+# Local archives and build outputs
+dist/
+build/
+*.tmp
+*.log
+FitnessMetric_Complete_Project.zip
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
