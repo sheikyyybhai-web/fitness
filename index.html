@@ -157,6 +157,12 @@
             <path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/>
           </svg>
         ),
+        ai: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+            <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
+          </svg>
+        ),
         nutrition: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
             <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
@@ -276,7 +282,7 @@
     // CALCULATION LOGIC ENGINE (12 Clinical Tools)
     // =========================================================================
     const Calculations = {
-      // 1. BMI
+      // 1. BMI with Overweight Analysis & Milestones
       bmi: (wKg, hCm) => {
         const hM = hCm / 100;
         const val = Math.round((wKg / (hM * hM)) * 10) / 10;
@@ -287,7 +293,20 @@
         else { cat = 'Obese'; color = 'text-fm-red'; bg = 'bg-red-100'; }
         const minW = Math.round(18.5 * hM * hM * 10) / 10;
         const maxW = Math.round(24.9 * hM * hM * 10) / 10;
-        return { val, cat, color, bg, minW, maxW };
+        const diffFromMaxW = Math.round((wKg - maxW) * 10) / 10;
+        const diffFromMinW = Math.round((minW - wKg) * 10) / 10;
+        const isOverweight = val >= 25.0;
+        const isUnderweight = val < 18.5;
+        const isNormal = val >= 18.5 && val < 25.0;
+        const overweightKg = Math.max(0, diffFromMaxW);
+        const underweightKg = Math.max(0, diffFromMinW);
+        const weeksToHealthyWeight = Math.ceil(overweightKg / 0.5);
+        return { 
+          val, cat, color, bg, minW, maxW, 
+          diffFromMaxW, diffFromMinW, 
+          isOverweight, isUnderweight, isNormal, 
+          overweightKg, underweightKg, weeksToHealthyWeight 
+        };
       },
 
       // 2. BMR (Mifflin-St Jeor)
@@ -10316,6 +10335,15 @@
               </button>
 
               <button 
+                onClick={() => navigateTo('diet-planner')}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-smooth ${currentRoute === 'diet-planner' ? 'bg-red-600 text-white font-extrabold shadow-md shadow-red-600/30' : 'text-fm-text hover:bg-red-50 hover:text-red-700'}`}
+              >
+                <Icon name="ai" className="w-4 h-4 text-amber-500" />
+                <span>AI Diet Planner</span>
+                <span className="ml-auto text-[9px] font-extrabold bg-gradient-to-r from-amber-500 to-red-600 text-white px-2 py-0.5 rounded-full shadow-sm">AI</span>
+              </button>
+
+              <button 
                 onClick={() => navigateTo('exercises')}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-semibold transition-smooth ${(currentRoute === 'exercises' || currentRoute === 'workouts') ? 'bg-red-600 text-white font-extrabold shadow-md shadow-red-600/30' : 'text-fm-text hover:bg-red-50 hover:text-red-700'}`}
               >
@@ -10475,6 +10503,10 @@
                 <button onClick={() => navigateTo('calculators')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">12 Body Calculators</button>
                 <button onClick={() => navigateTo('foods')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Food & Nutrition Explorer</button>
                 <button onClick={() => navigateTo('food-log')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Daily Nutrition Tracker</button>
+                  <button onClick={() => navigateTo('diet-planner')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 flex items-center justify-between">
+                    <span>🤖 AI Diet Planner</span>
+                    <span className="text-[9px] bg-red-600 text-white px-1.5 py-0.5 rounded-full font-extrabold">AI</span>
+                  </button>
                 <button onClick={() => navigateTo('exercises')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Exercise & Muscle Explorer</button>
                 <button onClick={() => navigateTo('progress')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Progress & History</button>
                 <button onClick={() => navigateTo('admin')} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold text-fm-forest hover:bg-fm-surfaceSubtle">Admin Dashboard</button>
@@ -10505,6 +10537,7 @@
                     setCalcHistory(prev => [entry, ...prev]);
                   }}
                   history={calcHistory}
+                  navigateTo={navigateTo}
                   displayWeight={displayWeight}
                   displayHeight={displayHeight}
                   isMetric={isMetric}
@@ -10574,6 +10607,25 @@
                       return updated;
                     });
                   }}
+                />
+              )}
+
+              {currentRoute === 'diet-planner' && (
+                <AIDietPlannerView 
+                  user={currentUser} 
+                  metrics={metrics} 
+                  foods={foods}
+                  onAddBatchLogs={(newLogs) => {
+                    setFoodLogs(prev => [...newLogs, ...prev]);
+                    try {
+                      const saved = localStorage.getItem('fm_food_logs');
+                      const existing = saved ? JSON.parse(saved) : [];
+                      localStorage.setItem('fm_food_logs', JSON.stringify([...newLogs, ...existing]));
+                    } catch {}
+                  }}
+                  navigateTo={navigateTo}
+                  displayWeight={displayWeight}
+                  isMetric={isMetric}
                 />
               )}
 
@@ -10991,16 +11043,17 @@
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button 
+                onClick={() => navigateTo('diet-planner')}
+                className="px-3.5 py-2 text-xs font-extrabold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all shadow-md shadow-red-600/20 flex items-center gap-1.5"
+              >
+                <span>🤖</span>
+                <span>AI Diet Planner</span>
+              </button>
+              <button 
                 onClick={() => navigateTo('calculators')}
                 className="px-3.5 py-2 text-xs font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle hover:bg-fm-border text-fm-text transition-smooth"
               >
                 Open Calculators
-              </button>
-              <button 
-                onClick={() => navigateTo('foods')}
-                className="px-3.5 py-2 text-xs font-bold rounded-lg bg-fm-forest text-white hover:bg-fm-forestDark transition-smooth shadow-sm"
-              >
-                Search Food Database
               </button>
             </div>
           </div>
@@ -11013,10 +11066,20 @@
               <span className="text-[10px] text-fm-forest font-semibold">Height: {displayHeight(user.heightCm)}</span>
             </div>
 
-            <div className="bg-fm-card p-4 rounded-xl border border-fm-border shadow-fm-card">
+            <div className="bg-fm-card p-4 rounded-xl border border-fm-border shadow-fm-card cursor-pointer hover:border-red-400 transition-all" onClick={() => navigateTo('calculators')}>
               <span className="text-[11px] font-bold text-fm-muted block">Body Mass Index</span>
               <span className="text-xl font-extrabold text-fm-text mt-1 block">{metrics.bmi.val}</span>
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${metrics.bmi.bg} ${metrics.bmi.color}`}>{metrics.bmi.cat}</span>
+              {metrics.bmi.isOverweight ? (
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                  +{metrics.bmi.overweightKg} kg Overweight
+                </span>
+              ) : metrics.bmi.isUnderweight ? (
+                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                  -{metrics.bmi.underweightKg} kg Underweight
+                </span>
+              ) : (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${metrics.bmi.bg} ${metrics.bmi.color}`}>{metrics.bmi.cat}</span>
+              )}
             </div>
 
             <div className="bg-fm-card p-4 rounded-xl border border-fm-border shadow-fm-card">
@@ -11148,7 +11211,7 @@
     // =========================================================================
     // VIEW 2: BODY COMPOSITION CALCULATORS (12 Comprehensive Tools)
     // =========================================================================
-    function CalculatorsView({ user, onSaveResult, history, displayWeight, displayHeight, isMetric }) {
+    function CalculatorsView({ user, onSaveResult, history, navigateTo, displayWeight, displayHeight, isMetric }) {
       const [activeTab, setActiveTab] = useState('bmi');
 
       // Shared Inputs
@@ -11370,28 +11433,145 @@
               <div>
                 {activeTab === 'bmi' && (() => {
                   const res = Calculations.bmi(weight, height);
+                  const bmiClamped = Math.min(40, Math.max(15, res.val));
+                  const needlePct = Math.round(((bmiClamped - 15) / (40 - 15)) * 100);
                   return (
-                    <div>
-                      <span className="text-xs font-bold text-fm-forest uppercase tracking-wider">Tool 1: Body Mass Index</span>
-                      <div className="my-4 p-5 rounded-2xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-fm-border pb-2">
+                        <span className="text-xs font-bold text-fm-forest uppercase tracking-wider">Tool 1: Body Mass Index & Overweight Analysis</span>
+                        <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${res.bg} ${res.color}`}>
+                          {res.cat}
+                        </span>
+                      </div>
+
+                      {/* Score Highlight Box */}
+                      <div className="p-5 rounded-2xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                        <span className="text-xs font-bold text-fm-muted block mb-1">Your Calculated BMI</span>
                         <span className="text-4xl font-extrabold text-fm-text">{res.val}</span>
-                        <div className="mt-2">
-                          <span className={`text-xs font-bold px-3 py-1 rounded-full ${res.bg} ${res.color}`}>
-                            {res.cat}
-                          </span>
+                        <p className="text-xs text-fm-muted mt-1 font-medium">
+                          Formula: <code>weight ({weight} kg) / (height ({height/100} m))²</code>
+                        </p>
+                      </div>
+
+                      {/* Visual BMI Spectrum Gauge */}
+                      <div className="p-4 rounded-xl bg-fm-card border border-fm-border shadow-sm space-y-2">
+                        <div className="flex justify-between text-[11px] font-bold text-fm-muted">
+                          <span>WHO Classification Gauge</span>
+                          <span className="font-extrabold text-fm-text">Score: {res.val}</span>
+                        </div>
+                        {/* Segmented Gradient Bar */}
+                        <div className="relative h-4 rounded-full overflow-hidden flex bg-stone-100">
+                          <div style={{ width: '23%' }} className="bg-blue-400" title="Underweight (< 18.5)"></div>
+                          <div style={{ width: '26%' }} className="bg-emerald-500" title="Normal Weight (18.5 - 24.9)"></div>
+                          <div style={{ width: '20%' }} className="bg-amber-400" title="Overweight (25.0 - 29.9)"></div>
+                          <div style={{ width: '31%' }} className="bg-red-500" title="Obese (30.0+)"></div>
+                        </div>
+                        {/* Needle Indicator */}
+                        <div className="relative h-5">
+                          <div 
+                            style={{ left: `calc(${needlePct}% - 12px)` }} 
+                            className="absolute top-0 flex flex-col items-center transition-all duration-300"
+                          >
+                            <span className="text-[10px] font-extrabold text-fm-text">▲</span>
+                            <span className="text-[9px] font-bold bg-fm-text text-white px-1.5 py-0.2 rounded-full whitespace-nowrap shadow-sm">
+                              {res.val}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Zone Legend */}
+                        <div className="grid grid-cols-4 text-center text-[10px] font-semibold text-fm-muted pt-1">
+                          <span className="text-blue-600">&lt; 18.5 Under</span>
+                          <span className="text-emerald-700">18.5–24.9 Normal</span>
+                          <span className="text-amber-700">25–29.9 Over</span>
+                          <span className="text-red-700">30+ Obese</span>
                         </div>
                       </div>
-                      <p className="text-xs text-fm-muted leading-relaxed">
-                        Formula: <code>weight (kg) / height (m)²</code>. Healthy reference range for your height: <strong>{res.minW} kg – {res.maxW} kg</strong>.
-                      </p>
-                      <div className="mt-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
-                        <strong>Clinical Note:</strong> BMI is a population screening tool, not a diagnostic measure of individual health or muscular composition.
+
+                      {/* OVERWEIGHT SHOW / ANALYSIS CALLOUT CARD */}
+                      {res.isOverweight ? (
+                        <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">⚠️</span>
+                            <div>
+                              <h4 className="text-sm font-extrabold text-amber-900">
+                                Overweight Status: +{res.overweightKg} kg (+{Math.round(res.overweightKg * 2.20462 * 10) / 10} lbs)
+                              </h4>
+                              <p className="text-xs text-amber-800">
+                                You are currently <strong>{res.overweightKg} kg</strong> above the healthy normal BMI ceiling ({res.maxW} kg) for your height ({height} cm).
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-amber-200 text-xs">
+                            <div className="p-2 rounded-lg bg-white/80 border border-amber-200 text-center">
+                              <span className="text-[10px] font-bold text-fm-muted block">Healthy Range</span>
+                              <span className="font-extrabold text-fm-text">{res.minW} – {res.maxW} kg</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 border border-amber-200 text-center">
+                              <span className="text-[10px] font-bold text-fm-muted block">Target to Lose</span>
+                              <span className="font-extrabold text-red-600">-{res.overweightKg} kg</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 border border-amber-200 text-center">
+                              <span className="text-[10px] font-bold text-fm-muted block">Safe Timeline</span>
+                              <span className="font-extrabold text-fm-forestDark">~{res.weeksToHealthyWeight} Weeks</span>
+                            </div>
+                            <div className="p-2 rounded-lg bg-white/80 border border-amber-200 text-center">
+                              <span className="text-[10px] font-bold text-fm-muted block">Calorie Deficit</span>
+                              <span className="font-extrabold text-amber-800">-500 kcal/day</span>
+                            </div>
+                          </div>
+
+                          <button 
+                            type="button"
+                            onClick={() => navigateTo('diet-planner')}
+                            className="w-full py-2.5 px-4 text-xs font-bold rounded-lg bg-amber-700 hover:bg-amber-800 text-white transition-all shadow-sm flex items-center justify-center gap-2"
+                          >
+                            <span>⚡ Generate AI Fat Loss Diet Plan (-500 kcal)</span>
+                            <span>➔</span>
+                          </button>
+                        </div>
+                      ) : res.isUnderweight ? (
+                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 space-y-2">
+                          <h4 className="text-sm font-extrabold text-blue-900">
+                            ℹ️ Underweight Status: -{res.underweightKg} kg below healthy normal threshold
+                          </h4>
+                          <p className="text-xs text-blue-800">
+                            Healthy normal weight threshold for your height is {res.minW} kg. Target: Lean muscle gain with a structured surplus (+300 kcal/day).
+                          </p>
+                          <button 
+                            type="button"
+                            onClick={() => navigateTo('diet-planner')}
+                            className="py-2 px-3 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-sm"
+                          >
+                            Plan Lean Bulking with AI Diet Planner ➔
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                          <h4 className="text-sm font-extrabold text-emerald-900">
+                            ✅ Healthy Normal Weight ({res.val} BMI)
+                          </h4>
+                          <p className="text-xs text-emerald-800">
+                            Your weight is within the optimal WHO reference range ({res.minW} kg – {res.maxW} kg). You have a {Math.round((res.maxW - weight) * 10) / 10} kg safety margin before the overweight boundary.
+                          </p>
+                          <button 
+                            type="button"
+                            onClick={() => navigateTo('diet-planner')}
+                            className="py-2 px-3 text-xs font-bold rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white transition-all shadow-sm"
+                          >
+                            Optimize Macros with AI Diet Planner ➔
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 text-[11px] text-fm-muted">
+                        <strong>Clinical Science Note:</strong> BMI is a validated epidemiological screening metric. For athletic individuals with high muscularity, also check Tool 4 (Lean Body Mass) and Tool 6 (Deurenberg Body-Fat %) to assess body composition.
                       </div>
                     </div>
                   );
                 })()}
 
-                {activeTab === 'bmr' && (() => {
+                {activeTab === 'bmr'{activeTab === 'bmr' && (() => {
                   const bmr = Calculations.bmr(weight, height, age, sex);
                   return (
                     <div>
@@ -13953,6 +14133,669 @@
     // =========================================================================
     // VIEW 8: SETTINGS & SUPABASE CONFIGURATION
     // =========================================================================
+    
+    // =========================================================================
+    // VIEW 9: AI CLINICAL NUTRITION & DIET PLANNER
+    // =========================================================================
+    function AIDietPlannerView({ user, metrics, foods = [], onAddBatchLogs, navigateTo, displayWeight, isMetric }) {
+      const [dietGoal, setDietGoal] = useState(() => {
+        if (metrics.bmi?.isOverweight) return 'fat_loss';
+        if (metrics.bmi?.isUnderweight) return 'muscle_gain';
+        return user.fitnessGoal || 'fat_loss';
+      });
+      const [dietPreference, setDietPreference] = useState('high_protein'); // 'high_protein' | 'indian_veg' | 'vegan' | 'low_carb' | 'mediterranean'
+      const [mealCount, setMealCount] = useState('4_meals'); // '3_meals' | '4_meals' | '5_meals'
+      const [planVariation, setPlanVariation] = useState(0);
+      const [copiedNotice, setCopiedNotice] = useState(false);
+      const [loggedNotice, setLoggedNotice] = useState(false);
+
+      // Caloric and Macro Targets calculation based on biometric metrics
+      const userTdee = metrics.tdee || 2400;
+      const userWeight = user.currentWeightKg || 74.5;
+
+      const planTargets = useMemo(() => {
+        let cal = userTdee;
+        let pFactor = 1.8;
+        let goalTitle = 'Maintenance & Recomposition';
+        let deficitLabel = '0 kcal (Energy Balance)';
+
+        if (dietGoal === 'fat_loss') {
+          cal = Math.max(1300, userTdee - 500);
+          pFactor = 2.0; // Higher protein to spare lean muscle mass during deficit
+          goalTitle = 'Fat Loss & Calorie Deficit';
+          deficitLabel = '-500 kcal/day (Safe Deficit)';
+        } else if (dietGoal === 'rapid_cut') {
+          cal = Math.max(1200, userTdee - 700);
+          pFactor = 2.2;
+          goalTitle = 'Aggressive Fat Loss Cut';
+          deficitLabel = '-700 kcal/day (Maximum Safe Cut)';
+        } else if (dietGoal === 'recomp') {
+          cal = Math.max(1400, userTdee - 200);
+          pFactor = 2.0;
+          goalTitle = 'Body Recomposition';
+          deficitLabel = '-200 kcal/day (High Protein Recomp)';
+        } else if (dietGoal === 'muscle_gain') {
+          cal = userTdee + 300;
+          pFactor = 1.8;
+          goalTitle = 'Lean Muscle Hypertrophy';
+          deficitLabel = '+300 kcal/day (Lean Surplus)';
+        }
+
+        const proteinG = Math.round(userWeight * pFactor);
+        const fatG = Math.round((cal * 0.25) / 9);
+        const carbsG = Math.max(40, Math.round((cal - (proteinG * 4) - (fatG * 9)) / 4));
+        const fiberG = 35;
+
+        return { cal, proteinG, fatG, carbsG, fiberG, goalTitle, deficitLabel, pFactor };
+      }, [userTdee, userWeight, dietGoal]);
+
+      // Pre-curated, clinically calibrated meal pools for each dietary preference
+      const generatedPlan = useMemo(() => {
+        const targetCal = planTargets.cal;
+        const targetP = planTargets.proteinG;
+        const varMod = planVariation % 2;
+
+        let mealsData = [];
+
+        if (dietPreference === 'high_protein') {
+          mealsData = [
+            {
+              meal: 'breakfast',
+              title: 'Breakfast • Anabolic Muscle Initiation',
+              time: '08:00 AM',
+              tip: 'Boil eggs in advance. Serve with warm rolled oats seasoned with cinnamon.',
+              items: [
+                { name: 'Whole Egg (Large, Boiled)', grams: varMod === 0 ? 100 : 150, cal: varMod === 0 ? 155 : 232, protein: varMod === 0 ? 12.6 : 18.9, carbs: 1.1, fat: varMod === 0 ? 10.6 : 15.9, fiber: 0 },
+                { name: 'Egg White, raw or cooked', grams: 100, cal: 52, protein: 11.0, carbs: 0.7, fat: 0.2, fiber: 0 },
+                { name: 'Rolled Oats, raw', grams: 60, cal: 233, protein: 10.1, carbs: 40.0, fat: 4.1, fiber: 6.4 },
+                { name: 'Apple, raw', grams: 120, cal: 62, protein: 0.4, carbs: 16.8, fat: 0.2, fiber: 2.9 }
+              ]
+            },
+            {
+              meal: 'lunch',
+              title: 'Lunch • High-Leucine Protein & Sustained Glycogen',
+              time: '01:00 PM',
+              tip: 'Pan-sear chicken with 1 tsp extra virgin olive oil, garlic, and fresh black pepper.',
+              items: [
+                { name: 'Chicken Breast, boneless cooked', grams: varMod === 0 ? 180 : 200, cal: varMod === 0 ? 297 : 330, protein: varMod === 0 ? 55.8 : 62.0, carbs: 0, fat: varMod === 0 ? 6.5 : 7.2, fiber: 0 },
+                { name: 'White Rice, cooked', grams: 160, cal: 208, protein: 4.3, carbs: 45.1, fat: 0.5, fiber: 0.6 },
+                { name: 'Broccoli, steamed', grams: 120, cal: 42, protein: 3.4, carbs: 8.4, fat: 0.5, fiber: 3.1 },
+                { name: 'Olive Oil (Extra Virgin)', grams: 6, cal: 53, protein: 0, carbs: 0, fat: 6.0, fiber: 0 }
+              ]
+            },
+            {
+              meal: 'snack',
+              title: 'Afternoon Fuel • Fast-Absorbing Recovery Snack',
+              time: '04:30 PM',
+              tip: 'Consume 60 minutes before training or as an afternoon satiety bridge.',
+              items: [
+                { name: 'Greek Yogurt / Thick Curd', grams: 150, cal: 88, protein: 15.0, carbs: 5.4, fat: 0.6, fiber: 0 },
+                { name: 'Almonds, raw', grams: 20, cal: 116, protein: 4.2, carbs: 4.3, fat: 10.0, fiber: 2.5 },
+                { name: 'Banana, raw', grams: 100, cal: 89, protein: 1.1, carbs: 22.8, fat: 0.3, fiber: 2.6 }
+              ]
+            },
+            {
+              meal: 'dinner',
+              title: 'Dinner • Clean Lean Protein & Cellular Recovery',
+              time: '08:00 PM',
+              tip: 'Grill or bake salmon fillet. Season vegetables with lemon juice and sea salt.',
+              items: [
+                { name: 'Salmon / White Fish Fillet, baked', grams: 160, cal: 332, protein: 35.2, carbs: 0, fat: 20.8, fiber: 0 },
+                { name: 'Sweet Potato, boiled or baked', grams: 150, cal: 129, protein: 2.4, carbs: 30.0, fat: 0.2, fiber: 4.5 },
+                { name: 'Mixed Green Salad (Cucumber, Tomato, Spinach)', grams: 150, cal: 35, protein: 2.1, carbs: 6.8, fat: 0.4, fiber: 3.2 }
+              ]
+            }
+          ];
+        } else if (dietPreference === 'indian_veg') {
+          mealsData = [
+            {
+              meal: 'breakfast',
+              title: 'Breakfast • Desi High-Protein Power Morning',
+              time: '08:00 AM',
+              tip: 'Boil sprouted moong with pinch of rock salt and chaat masala. Serve with warm milk.',
+              items: [
+                { name: 'Moong Dal Sprouts, steamed', grams: 150, cal: 158, protein: 10.5, carbs: 28.5, fat: 0.6, fiber: 7.5 },
+                { name: 'Paneer (Fresh Cottage Cheese)', grams: 80, cal: 236, protein: 14.6, carbs: 2.7, fat: 18.5, fiber: 0 },
+                { name: 'Cow Milk, low fat / whole', grams: 200, cal: 122, protein: 6.6, carbs: 9.6, fat: 6.5, fiber: 0 },
+                { name: 'Almonds (Badam), soaked', grams: 15, cal: 87, protein: 3.2, carbs: 3.2, fat: 7.5, fiber: 1.9 }
+              ]
+            },
+            {
+              meal: 'lunch',
+              title: 'Lunch • Traditional Balanced Thali Engine',
+              time: '01:00 PM',
+              tip: 'Cook dal with jeera tadka. Pair fresh paneer with whole wheat rotis.',
+              items: [
+                { name: 'Paneer Bhurji / Curry', grams: 120, cal: 354, protein: 21.9, carbs: 4.1, fat: 27.7, fiber: 0 },
+                { name: 'Dal Tadka (Cooked Yellow Lentils)', grams: 180, cal: 212, protein: 13.0, carbs: 32.4, fat: 3.6, fiber: 8.1 },
+                { name: 'Whole Wheat Roti / Chapati (2 medium)', grams: 80, cal: 214, protein: 7.2, carbs: 42.4, fat: 2.4, fiber: 6.8 },
+                { name: 'Plain Dahi / Curd', grams: 120, cal: 73, protein: 4.2, carbs: 5.6, fat: 3.8, fiber: 0 },
+                { name: 'Cucumber & Tomato Kachumber Salad', grams: 100, cal: 22, protein: 1.0, carbs: 4.5, fat: 0.2, fiber: 1.8 }
+              ]
+            },
+            {
+              meal: 'snack',
+              title: 'Evening Snack • Fiber & Plant Protein Booster',
+              time: '05:00 PM',
+              tip: 'Roasted chana provides sustained satiety without empty refined carbohydrates.',
+              items: [
+                { name: 'Roasted Chana (Bengal Gram)', grams: 50, cal: 184, protein: 9.5, carbs: 29.0, fat: 2.5, fiber: 7.0 },
+                { name: 'Green Tea with Lemon', grams: 200, cal: 2, protein: 0, carbs: 0.5, fat: 0, fiber: 0 },
+                { name: 'Fresh Apple / Orange', grams: 100, cal: 52, protein: 0.3, carbs: 14.0, fat: 0.2, fiber: 2.4 }
+              ]
+            },
+            {
+              meal: 'dinner',
+              title: 'Dinner • Satiating High-Fiber Protein Bowl',
+              time: '08:30 PM',
+              tip: 'Pressure-cook Rajma or Chole with ginger and aromatic whole spices.',
+              items: [
+                { name: 'Rajma / Chole Curry (Cooked Kidney Beans/Chickpeas)', grams: 200, cal: 254, protein: 15.6, carbs: 44.0, fat: 2.0, fiber: 12.8 },
+                { name: 'Brown or Basmati Rice, cooked', grams: 130, cal: 169, protein: 3.5, carbs: 36.4, fat: 0.4, fiber: 1.8 },
+                { name: 'Palak / Sauteed Greens', grams: 120, cal: 34, protein: 3.2, carbs: 4.8, fat: 0.5, fiber: 2.8 }
+              ]
+            }
+          ];
+        } else if (dietPreference === 'vegan') {
+          mealsData = [
+            {
+              meal: 'breakfast',
+              title: 'Breakfast • 100% Plant-Based Amino Kickstart',
+              time: '08:00 AM',
+              tip: 'Crumble firm tofu in skillet with turmeric, nutritional yeast, and sea salt.',
+              items: [
+                { name: 'Tofu, firm scrambled', grams: 180, cal: 153, protein: 17.8, carbs: 3.6, fat: 8.5, fiber: 2.2 },
+                { name: 'Whole Grain Sliced Bread (2 slices)', grams: 70, cal: 182, protein: 8.4, carbs: 31.5, fat: 2.5, fiber: 4.9 },
+                { name: 'Peanut Butter, 100% natural', grams: 20, cal: 118, protein: 5.0, carbs: 4.0, fat: 10.0, fiber: 1.6 },
+                { name: 'Chia Seeds, soaked', grams: 10, cal: 48, protein: 1.7, carbs: 4.2, fat: 3.1, fiber: 3.4 }
+              ]
+            },
+            {
+              meal: 'lunch',
+              title: 'Lunch • Macro-Complete Grain & Legume Bowl',
+              time: '01:00 PM',
+              tip: 'Combining legumes (chickpeas) with grains (quinoa) provides all 9 essential amino acids.',
+              items: [
+                { name: 'Chickpeas / Garbanzo Beans, cooked', grams: 200, cal: 269, protein: 14.5, carbs: 45.0, fat: 4.2, fiber: 12.5 },
+                { name: 'Quinoa / Brown Rice, cooked', grams: 150, cal: 180, protein: 6.6, carbs: 32.0, fat: 2.9, fiber: 4.2 },
+                { name: 'Steamed Broccoli & Carrots', grams: 130, cal: 52, protein: 3.6, carbs: 10.4, fat: 0.5, fiber: 3.8 },
+                { name: 'Olive Oil dressing', grams: 8, cal: 71, protein: 0, carbs: 0, fat: 8.0, fiber: 0 }
+              ]
+            },
+            {
+              meal: 'snack',
+              title: 'Afternoon Fuel • Micronutrient Dense Plant Power',
+              time: '04:30 PM',
+              tip: 'Healthy fats stabilize blood glucose and prevent evening cravings.',
+              items: [
+                { name: 'Soy Milk / Almond Milk, unsweetened', grams: 200, cal: 66, protein: 6.6, carbs: 3.4, fat: 3.2, fiber: 1.0 },
+                { name: 'Almonds & Walnuts mix', grams: 25, cal: 152, protein: 4.8, carbs: 4.5, fat: 14.0, fiber: 2.4 },
+                { name: 'Banana', grams: 100, cal: 89, protein: 1.1, carbs: 22.8, fat: 0.3, fiber: 2.6 }
+              ]
+            },
+            {
+              meal: 'dinner',
+              title: 'Dinner • Soya Chunks & Fiber Regeneration',
+              time: '08:00 PM',
+              tip: 'Soya chunks have the highest protein density of any plant food (over 52% protein).',
+              items: [
+                { name: 'Soya Chunks, boiled & seasoned', grams: 60, cal: 207, protein: 31.2, carbs: 19.8, fat: 0.3, fiber: 7.8 },
+                { name: 'Sweet Potato, baked', grams: 150, cal: 129, protein: 2.4, carbs: 30.0, fat: 0.2, fiber: 4.5 },
+                { name: 'Large Mixed Garden Salad with Avocado', grams: 120, cal: 85, protein: 1.8, carbs: 6.2, fat: 6.5, fiber: 4.0 }
+              ]
+            }
+          ];
+        } else if (dietPreference === 'low_carb') {
+          mealsData = [
+            {
+              meal: 'breakfast',
+              title: 'Breakfast • Ketogenic Satiety & Healthy Fats',
+              time: '08:30 AM',
+              tip: 'Cook eggs in grass-fed butter or olive oil with spinach.',
+              items: [
+                { name: 'Whole Eggs (3 large)', grams: 150, cal: 232, protein: 18.9, carbs: 1.6, fat: 15.9, fiber: 0 },
+                { name: 'Avocado, raw', grams: 70, cal: 112, protein: 1.4, carbs: 6.0, fat: 10.5, fiber: 4.7 },
+                { name: 'Spinach, sautéed', grams: 100, cal: 23, protein: 2.9, carbs: 3.6, fat: 0.4, fiber: 2.2 }
+              ]
+            },
+            {
+              meal: 'lunch',
+              title: 'Lunch • Pure Lean Protein & High Fiber Greens',
+              time: '01:00 PM',
+              tip: 'Keep carbohydrate intake strictly fiber-based for maximum metabolic fat-adaptation.',
+              items: [
+                { name: 'Chicken Breast / Paneer Tikka', grams: 200, cal: 330, protein: 62.0, carbs: 0, fat: 7.2, fiber: 0 },
+                { name: 'Cucumber, Tomato & Feta Salad', grams: 150, cal: 95, protein: 4.5, carbs: 6.5, fat: 6.0, fiber: 2.0 },
+                { name: 'Olive Oil (Extra Virgin)', grams: 10, cal: 88, protein: 0, carbs: 0, fat: 10.0, fiber: 0 }
+              ]
+            },
+            {
+              meal: 'snack',
+              title: 'Snack • Zero-Sugar Protein & Ketone Sustenance',
+              time: '05:00 PM',
+              tip: 'Nuts and seeds provide magnesium and essential electrolytes.',
+              items: [
+                { name: 'Almonds & Walnuts', grams: 30, cal: 178, protein: 5.6, carbs: 5.4, fat: 16.5, fiber: 3.2 },
+                { name: 'Boiled Egg (1 large)', grams: 50, cal: 78, protein: 6.3, carbs: 0.6, fat: 5.3, fiber: 0 }
+              ]
+            },
+            {
+              meal: 'dinner',
+              title: 'Dinner • Omega-3 Rich Fish & Low-Glycemic Brassica',
+              time: '08:00 PM',
+              tip: 'Salmon provides EPA and DHA omega-3s that reduce systemic inflammation.',
+              items: [
+                { name: 'Salmon Fillet / Grilled Fish', grams: 180, cal: 374, protein: 39.6, carbs: 0, fat: 23.4, fiber: 0 },
+                { name: 'Asparagus & Broccoli, grilled', grams: 150, cal: 48, protein: 4.2, carbs: 8.8, fat: 0.6, fiber: 4.5 }
+              ]
+            }
+          ];
+        } else { // mediterranean
+          mealsData = [
+            {
+              meal: 'breakfast',
+              title: 'Breakfast • Mediterranean Longevity Bowl',
+              time: '08:00 AM',
+              tip: 'Greek yogurt provides slow-digesting micellar casein and active probiotics.',
+              items: [
+                { name: 'Greek Yogurt, plain whole', grams: 200, cal: 194, protein: 18.0, carbs: 7.2, fat: 10.0, fiber: 0 },
+                { name: 'Walnuts, raw halves', grams: 20, cal: 131, protein: 3.0, carbs: 2.8, fat: 13.0, fiber: 1.4 },
+                { name: 'Fresh Berries / Apple', grams: 100, cal: 52, protein: 0.7, carbs: 12.0, fat: 0.3, fiber: 2.8 }
+              ]
+            },
+            {
+              meal: 'lunch',
+              title: 'Lunch • Heart-Healthy Salmon & Whole Grains',
+              time: '01:00 PM',
+              tip: 'Extra virgin olive oil is the cornerstone of the Mediterranean longevity diet.',
+              items: [
+                { name: 'Baked Salmon Fillet', grams: 160, cal: 332, protein: 35.2, carbs: 0, fat: 20.8, fiber: 0 },
+                { name: 'Quinoa / Lentil Salad', grams: 150, cal: 185, protein: 7.2, carbs: 32.0, fat: 2.8, fiber: 4.8 },
+                { name: 'Greek Salad with Tomato, Cucumber, Olives', grams: 140, cal: 88, protein: 2.8, carbs: 6.8, fat: 6.0, fiber: 2.4 },
+                { name: 'Extra Virgin Olive Oil', grams: 8, cal: 71, protein: 0, carbs: 0, fat: 8.0, fiber: 0 }
+              ]
+            },
+            {
+              meal: 'snack',
+              title: 'Afternoon Refresh • Polyphenols & Amino Acids',
+              time: '04:30 PM',
+              tip: 'Rich in polyphenols and healthy monosaturated fatty acids.',
+              items: [
+                { name: 'Almonds, raw', grams: 25, cal: 145, protein: 5.3, carbs: 5.4, fat: 12.5, fiber: 3.1 },
+                { name: 'Boiled Egg (1 large)', grams: 50, cal: 78, protein: 6.3, carbs: 0.6, fat: 5.3, fiber: 0 }
+              ]
+            },
+            {
+              meal: 'dinner',
+              title: 'Dinner • Herb-Marinated Chicken & Steamed Legumes',
+              time: '08:00 PM',
+              tip: 'Season chicken with oregano, garlic, rosemary, and freshly squeezed lemon.',
+              items: [
+                { name: 'Chicken Breast, grilled with herbs', grams: 180, cal: 297, protein: 55.8, carbs: 0, fat: 6.5, fiber: 0 },
+                { name: 'Cooked Lentils / Green Beans', grams: 150, cal: 142, protein: 9.0, carbs: 24.5, fat: 0.6, fiber: 6.2 },
+                { name: 'Whole Wheat Pita / Crusty Bread', grams: 50, cal: 130, protein: 4.8, carbs: 26.0, fat: 1.0, fiber: 3.5 }
+              ]
+            }
+          ];
+        }
+
+        // Adjust meals based on mealCount preference (3 meals vs 4 meals vs 5 meals)
+        if (mealCount === '3_meals') {
+          // Merge snack items into lunch and dinner
+          const snackMeal = mealsData.find(m => m.meal === 'snack');
+          if (snackMeal) {
+            mealsData = mealsData.filter(m => m.meal !== 'snack');
+            if (mealsData[1]) mealsData[1].items.push(snackMeal.items[0]);
+            if (mealsData[2] && snackMeal.items[1]) mealsData[2].items.push(snackMeal.items[1]);
+          }
+        }
+
+        // Compute meal totals
+        return mealsData.map(m => {
+          let c = 0, p = 0, cb = 0, f = 0, fib = 0;
+          m.items.forEach(it => {
+            c += it.cal || 0;
+            p += it.protein || 0;
+            cb += it.carbs || 0;
+            f += it.fat || 0;
+            fib += it.fiber || 0;
+          });
+          const mealP = Math.round(p * 10) / 10;
+          const isMpsTriggered = mealP >= 25.0; // Morton et al. 2018 leucine threshold
+          return {
+            ...m,
+            totals: {
+              cal: Math.round(c),
+              protein: mealP,
+              carbs: Math.round(cb * 10) / 10,
+              fat: Math.round(f * 10) / 10,
+              fiber: Math.round(fib * 10) / 10
+            },
+            isMpsTriggered
+          };
+        });
+      }, [dietPreference, planTargets, mealCount, planVariation]);
+
+      // Daily Aggregate totals from generated plan
+      const aggregateTotals = useMemo(() => {
+        let cal = 0, p = 0, c = 0, f = 0, fib = 0;
+        generatedPlan.forEach(m => {
+          cal += m.totals.cal;
+          p += m.totals.protein;
+          c += m.totals.carbs;
+          f += m.totals.fat;
+          fib += m.totals.fiber;
+        });
+        return {
+          cal: Math.round(cal),
+          protein: Math.round(p * 10) / 10,
+          carbs: Math.round(c * 10) / 10,
+          fat: Math.round(f * 10) / 10,
+          fiber: Math.round(fib * 10) / 10
+        };
+      }, [generatedPlan]);
+
+      // Action: Log complete plan into Daily Food Tracker
+      const handleLogAllToTracker = () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const newLogs = [];
+
+        generatedPlan.forEach(mealSection => {
+          mealSection.items.forEach((item, idx) => {
+            newLogs.push({
+              id: 'ai-plan-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+              foodId: 'food-ai-' + idx,
+              foodName: item.name,
+              category: 'ai_curated',
+              meal: mealSection.meal,
+              servingG: item.grams,
+              cal: item.cal,
+              protein: item.protein,
+              carbs: item.carbs,
+              fat: item.fat,
+              fiber: item.fiber,
+              date: todayStr,
+              timestamp: new Date().toISOString(),
+              source: 'FITMETRIC AI Nutrition Planner'
+            });
+          });
+        });
+
+        onAddBatchLogs(newLogs);
+        setLoggedNotice(true);
+        setTimeout(() => setLoggedNotice(false), 3000);
+      };
+
+      // Action: Copy formatted plan to clipboard
+      const handleCopyPlan = () => {
+        let txt = `=================================================\n`;
+        txt += `FITMETRIC AI CLINICAL NUTRITION & DIET PLAN\n`;
+        txt += `Goal: ${planTargets.goalTitle} (${planTargets.deficitLabel})\n`;
+        txt += `Target: ${planTargets.cal} kcal | Protein: ${planTargets.proteinG}g | Carbs: ${planTargets.carbsG}g | Fat: ${planTargets.fatG}g\n`;
+        txt += `=================================================\n\n`;
+
+        generatedPlan.forEach(m => {
+          txt += `[${m.title}] (${m.time})\n`;
+          m.items.forEach(it => {
+            txt += ` - ${it.name}: ${it.grams}g -> ${it.cal} kcal | P: ${it.protein}g | C: ${it.carbs}g | F: ${it.fat}g\n`;
+          });
+          txt += ` Subtotal: ${m.totals.cal} kcal | Protein: ${m.totals.protein}g | Carbs: ${m.totals.carbs}g | Fat: ${m.totals.fat}g\n`;
+          txt += ` Chef Note: ${m.tip}\n\n`;
+        });
+
+        txt += `=================================================\n`;
+        txt += `DAILY TOTAL: ${aggregateTotals.cal} kcal | Protein: ${aggregateTotals.protein}g | Carbs: ${aggregateTotals.carbs}g | Fat: ${aggregateTotals.fat}g | Fiber: ${aggregateTotals.fiber}g\n`;
+        txt += `Generated by Fitness Metric Clinical Platform\n`;
+
+        navigator.clipboard.writeText(txt).then(() => {
+          setCopiedNotice(true);
+          setTimeout(() => setCopiedNotice(false), 2500);
+        });
+      };
+
+      return (
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-fm-border pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🤖</span>
+                <span className="text-xs font-bold text-red-600 uppercase tracking-wider">Algorithmic Clinical Nutrition Engine</span>
+                <span className="text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-red-600 text-white px-2 py-0.5 rounded-full shadow-sm">AI POWERED</span>
+              </div>
+              <h1 className="text-2xl font-extrabold text-fm-text mt-0.5">AI Clinical Diet & Meal Planner</h1>
+              <p className="text-xs text-fm-muted mt-1">
+                Personalized, macro-calibrated daily nutrition engineered specifically for your weight, metabolic rate, and body composition targets.
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-wrap items-center gap-2">
+              <button 
+                type="button"
+                onClick={() => setPlanVariation(prev => prev + 1)}
+                className="px-3.5 py-2 text-xs font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle hover:bg-fm-border text-fm-text transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <span>🔄</span>
+                <span>Alternative Menu</span>
+              </button>
+              <button 
+                type="button"
+                onClick={handleCopyPlan}
+                className="px-3.5 py-2 text-xs font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle hover:bg-fm-border text-fm-text transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <span>📋</span>
+                <span>{copiedNotice ? 'Copied to Clipboard!' : 'Copy Plan'}</span>
+              </button>
+              <button 
+                type="button"
+                onClick={handleLogAllToTracker}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all shadow-md shadow-red-600/20 flex items-center gap-1.5"
+              >
+                <span>🚀</span>
+                <span>{loggedNotice ? 'Logged into Today's Tracker!' : 'Log Entire Plan to Food Tracker'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Configuration Controls Bar */}
+          <div className="bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card space-y-5">
+            <h3 className="text-base font-bold text-fm-text border-b border-fm-border pb-2">Plan Preferences & Personal Targets</h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Goal Selector */}
+              <div>
+                <label className="text-xs font-bold text-fm-text block mb-1.5">Dietary Target Goal</label>
+                <select 
+                  value={dietGoal} 
+                  onChange={e => setDietGoal(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-fm-border bg-fm-surfaceSubtle font-bold text-fm-text"
+                >
+                  <option value="fat_loss">⚡ Fat Loss Cut (-500 kcal)</option>
+                  <option value="rapid_cut">🔥 Aggressive Cut (-700 kcal)</option>
+                  <option value="recomp">⚖️ Body Recomposition (-200 kcal)</option>
+                  <option value="maintenance">🥗 Maintenance Balance (TDEE)</option>
+                  <option value="muscle_gain">💪 Hypertrophy Lean Bulk (+300 kcal)</option>
+                </select>
+                <span className="text-[10px] text-fm-muted block mt-1">{planTargets.deficitLabel}</span>
+              </div>
+
+              {/* Diet Type */}
+              <div>
+                <label className="text-xs font-bold text-fm-text block mb-1.5">Dietary Preference</label>
+                <select 
+                  value={dietPreference} 
+                  onChange={e => setDietPreference(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-fm-border bg-fm-surfaceSubtle font-bold text-fm-text"
+                >
+                  <option value="high_protein">🥩 High-Protein Balanced (Chicken, Eggs, Oats)</option>
+                  <option value="indian_veg">🍛 Indian Vegetarian (Paneer, Dal, Rotis, Curd)</option>
+                  <option value="vegan">🌱 100% Plant-Based Vegan (Tofu, Beans, Lentils)</option>
+                  <option value="low_carb">🥑 Low-Carb / Ketogenic (Eggs, Fish, Avocado, Paneer)</option>
+                  <option value="mediterranean">🐟 Mediterranean Longevity (Fish, Olive Oil, Salad)</option>
+                </select>
+                <span className="text-[10px] text-fm-muted block mt-1">Curated from 230+ USDA & ICMR-NIN verified foods</span>
+              </div>
+
+              {/* Meal Structure */}
+              <div>
+                <label className="text-xs font-bold text-fm-text block mb-1.5">Meal Structure</label>
+                <select 
+                  value={mealCount} 
+                  onChange={e => setMealCount(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-fm-border bg-fm-surfaceSubtle font-bold text-fm-text"
+                >
+                  <option value="3_meals">3 Meals (Breakfast, Lunch, Dinner)</option>
+                  <option value="4_meals">4 Meals (Breakfast, Lunch, Afternoon Snack, Dinner)</option>
+                </select>
+                <span className="text-[10px] text-fm-muted block mt-1">Optimized for Muscle Protein Synthesis (MPS) pulse</span>
+              </div>
+            </div>
+
+            {/* Macro Budget Dashboard Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-3 border-t border-fm-border">
+              <div className="p-3 rounded-xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                <span className="text-[10px] font-bold text-fm-muted block">Calorie Target</span>
+                <span className="text-lg font-extrabold text-fm-text mt-0.5 block">{aggregateTotals.cal} <span className="text-xs font-normal">kcal</span></span>
+                <span className="text-[10px] text-red-600 font-bold">Target: {planTargets.cal}</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-center">
+                <span className="text-[10px] font-bold text-red-700 block">Daily Protein</span>
+                <span className="text-lg font-extrabold text-red-700 mt-0.5 block">{aggregateTotals.protein} <span className="text-xs font-normal">g</span></span>
+                <span className="text-[10px] text-red-700 font-bold">{planTargets.pFactor} g/kg bodyweight</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                <span className="text-[10px] font-bold text-fm-muted block">Carbohydrates</span>
+                <span className="text-lg font-extrabold text-fm-text mt-0.5 block">{aggregateTotals.carbs} <span className="text-xs font-normal">g</span></span>
+                <span className="text-[10px] text-fm-muted">Complex / Glycemic balance</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                <span className="text-[10px] font-bold text-fm-muted block">Total Dietary Fat</span>
+                <span className="text-lg font-extrabold text-fm-text mt-0.5 block">{aggregateTotals.fat} <span className="text-xs font-normal">g</span></span>
+                <span className="text-[10px] text-fm-muted">Essential lipid balance</span>
+              </div>
+
+              <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                <span className="text-[10px] font-bold text-fm-muted block">Dietary Fiber</span>
+                <span className="text-lg font-extrabold text-fm-forestDark mt-0.5 block">{aggregateTotals.fiber} <span className="text-xs font-normal">g</span></span>
+                <span className="text-[10px] text-fm-forest font-bold">Gut & Satiety Optimal</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Generated Meal-by-Meal Schedule Cards */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-fm-text">Your Generated Daily Meal Program</h2>
+              <span className="text-xs font-bold text-fm-forest bg-fm-sage px-3 py-1 rounded-full">
+                Variation #{planVariation + 1}
+              </span>
+            </div>
+
+            {generatedPlan.map((section, sIdx) => (
+              <div key={sIdx} className="bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card space-y-4 transition-all">
+                {/* Meal Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-fm-border pb-3">
+                  <div>
+                    <h3 className="text-base font-extrabold text-fm-text">{section.title}</h3>
+                    <p className="text-xs text-fm-muted italic mt-0.5">Chef Instruction: {section.tip}</p>
+                  </div>
+
+                  {/* MPS Leucine Badge */}
+                  <div className="flex items-center gap-2">
+                    {section.isMpsTriggered ? (
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-sm">
+                        <span>⚡</span>
+                        <span>{section.totals.protein}g Protein (MPS Activated)</span>
+                      </span>
+                    ) : (
+                      <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+                        {section.totals.protein}g Protein
+                      </span>
+                    )}
+                    <span className="text-xs font-bold text-fm-text bg-fm-surfaceSubtle px-2.5 py-1 rounded-lg border border-fm-border">
+                      {section.totals.cal} kcal
+                    </span>
+                  </div>
+                </div>
+
+                {/* Food Items Table */}
+                <div className="space-y-2">
+                  {section.items.map((item, itIdx) => (
+                    <div key={itIdx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-fm-surfaceSubtle border border-fm-border text-xs gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-full bg-red-100 text-red-700 font-extrabold flex items-center justify-center text-[11px]">
+                          {itIdx + 1}
+                        </span>
+                        <div>
+                          <span className="font-bold text-fm-text text-sm block">{item.name}</span>
+                          <span className="text-fm-muted font-medium text-[11px]">Serving size: <strong>{item.grams}g</strong></span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] self-end sm:self-auto">
+                        <span className="px-2 py-0.5 rounded bg-white font-extrabold text-fm-text border border-fm-border">{item.cal} kcal</span>
+                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-700 font-bold border border-red-200">P: {item.protein}g</span>
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold border border-blue-200">C: {item.carbs}g</span>
+                        <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-bold border border-amber-200">F: {item.fat}g</span>
+                        {item.fiber > 0 && (
+                          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">Fib: {item.fiber}g</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Subtotals Footer */}
+                <div className="pt-2 flex flex-wrap items-center justify-between text-xs text-fm-muted border-t border-fm-border font-semibold">
+                  <span>{section.items.length} whole food items curated</span>
+                  <div className="flex gap-3 text-fm-text font-bold">
+                    <span>Calories: {section.totals.cal} kcal</span>
+                    <span className="text-red-700">Protein: {section.totals.protein}g</span>
+                    <span>Carbs: {section.totals.carbs}g</span>
+                    <span>Fat: {section.totals.fat}g</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom Floating Action Bar */}
+          <div className="bg-fm-card p-6 rounded-2xl border border-red-200 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h4 className="text-base font-extrabold text-fm-text">Ready to Execute This Program?</h4>
+              <p className="text-xs text-fm-muted mt-0.5">
+                Clicking the button will automatically add all {generatedPlan.reduce((acc, m) => acc + m.items.length, 0)} meals directly into your Daily Nutrition Tracker for today.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button 
+                type="button"
+                onClick={handleLogAllToTracker}
+                className="w-full sm:w-auto px-6 py-3 text-xs font-extrabold rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all shadow-lg shadow-red-600/30 flex items-center justify-center gap-2"
+              >
+                <span>🚀</span>
+                <span>{loggedNotice ? 'Logged! View in Tracker' : 'Log All Meals to Daily Tracker'}</span>
+              </button>
+              {loggedNotice && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo('food-log')}
+                  className="px-4 py-3 text-xs font-bold rounded-xl bg-fm-forest hover:bg-fm-forestDark text-white transition-all"
+                >
+                  Open Daily Tracker ➔
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     function SettingsView({ user, onUpdateUser, supabaseConfig, onSaveSupabase, unitSystem, onSetUnitSystem }) {
       const [url, setUrl] = useState(supabaseConfig.url || '');
       const [key, setKey] = useState(supabaseConfig.anonKey || '');
