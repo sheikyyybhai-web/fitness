@@ -10040,26 +10040,19 @@
       // Food Logs (Daily Nutrition Tracker) - Clean initial state (no mock data)
       const [foodLogs, setFoodLogs] = useState(() => {
         try {
-          // One-time clear of legacy mock data from localStorage
-          if (localStorage.getItem('fm_mock_cleared_v1') !== 'true') {
-            const savedLogs = localStorage.getItem('fm_food_logs');
-            if (savedLogs && (savedLogs.includes('l-1') || savedLogs.includes('Whole Egg (Large, Boiled)'))) {
-              localStorage.removeItem('fm_food_logs');
-            }
-            const savedWeight = localStorage.getItem('fm_weight_history');
-            if (savedWeight && savedWeight.includes('2026-09-01')) {
-              localStorage.removeItem('fm_weight_history');
-            }
-            const savedAudit = localStorage.getItem('fm_audit_logs');
-            if (savedAudit && savedAudit.includes('a-1')) {
-              localStorage.removeItem('fm_audit_logs');
-            }
-            const savedSchedule = localStorage.getItem('fm_workout_schedule');
-            if (savedSchedule && savedSchedule.includes('"completed":true')) {
-              localStorage.removeItem('fm_workout_schedule');
-            }
-            localStorage.setItem('fm_mock_cleared_v1', 'true');
+          // One-time total purge of legacy mock data from browser localStorage
+          if (localStorage.getItem('fm_mock_cleared_v3') !== 'true') {
+            localStorage.removeItem('fm_food_logs');
+            localStorage.removeItem('fm_weight_history');
+            localStorage.removeItem('fm_audit_logs');
+            localStorage.removeItem('fm_workout_schedule');
+            localStorage.removeItem('fm_calc_history');
+            localStorage.setItem('fm_mock_cleared_v3', 'true');
           }
+          const saved = localStorage.getItem('fm_food_logs');
+          return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+      });
           const saved = localStorage.getItem('fm_food_logs');
           return saved ? JSON.parse(saved) : [];
         } catch { return []; }
@@ -10089,19 +10082,19 @@
         } catch { return []; }
       });
 
-      // Weekly Workout Routine - Clean initial state (no mock completed checks)
+      // Weekly Workout Routine - Clean initial state (all workouts empty, ready for user planning)
       const [workoutSchedule, setWorkoutSchedule] = useState(() => {
         try {
           const saved = localStorage.getItem('fm_workout_schedule');
           if (saved) return JSON.parse(saved);
         } catch {}
         return [
-          { day: 'Monday', title: 'Push Day (Chest, Shoulders & Triceps)', exercises: ['Barbell Flat Bench Press', 'Overhead Barbell Shoulder Press (OHP)'], completed: false },
-          { day: 'Tuesday', title: 'Rest & Active Recovery', exercises: [], completed: false },
-          { day: 'Wednesday', title: 'Pull Day (Lats & Biceps)', exercises: ['Pull-Up / Chin-Up'], completed: false },
-          { day: 'Thursday', title: 'Rest & Mobility', exercises: [], completed: false },
-          { day: 'Friday', title: 'Lower Body & Posterior Chain', exercises: ['Barbell Back Squat', 'Romanian Deadlift (RDL)', 'Barbell Hip Thrust'], completed: false },
-          { day: 'Saturday', title: 'Core & Conditioning', exercises: [], completed: false },
+          { day: 'Monday', title: 'Rest & Recovery', exercises: [], completed: false },
+          { day: 'Tuesday', title: 'Rest & Recovery', exercises: [], completed: false },
+          { day: 'Wednesday', title: 'Rest & Recovery', exercises: [], completed: false },
+          { day: 'Thursday', title: 'Rest & Recovery', exercises: [], completed: false },
+          { day: 'Friday', title: 'Rest & Recovery', exercises: [], completed: false },
+          { day: 'Saturday', title: 'Rest & Recovery', exercises: [], completed: false },
           { day: 'Sunday', title: 'Full Rest Day', exercises: [], completed: false }
         ];
       });
@@ -11125,12 +11118,18 @@
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  {weightHistory.slice(-4).reverse().map((w, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-fm-surfaceSubtle text-xs">
-                      <span className="font-medium text-fm-muted">{w.date}</span>
-                      <span className="font-extrabold text-fm-text">{displayWeight(w.weight)}</span>
+                  {weightHistory.length === 0 ? (
+                    <div className="py-4 px-3 text-center rounded-lg bg-fm-surfaceSubtle border border-dashed border-fm-border text-xs text-fm-muted">
+                      No weight check-ins recorded yet. Record your first check-in in <span className="font-bold text-fm-forest cursor-pointer" onClick={() => navigateTo('progress')}>Progress</span>.
                     </div>
-                  ))}
+                  ) : (
+                    weightHistory.slice(-4).reverse().map((w, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-fm-surfaceSubtle text-xs">
+                        <span className="font-medium text-fm-muted">{w.date}</span>
+                        <span className="font-extrabold text-fm-text">{displayWeight(w.weight)}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -14025,6 +14024,26 @@
               className="px-4 py-2 text-xs font-bold rounded-lg bg-fm-forest text-white hover:bg-fm-forestDark"
             >
               {saved ? 'Saved!' : 'Save Supabase Credentials'}
+            </button>
+          </div>
+
+          {/* Reset All Local Data */}
+          <div className="bg-fm-card p-6 rounded-2xl border border-red-200 shadow-fm-card space-y-3">
+            <h3 className="text-base font-bold text-red-600">Reset Local Storage & Clear All Data</h3>
+            <p className="text-xs text-fm-muted">
+              Instantly wipe all locally stored food logs, weight entries, custom schedules, and calculator history. Restores the application to an absolute fresh clean state.
+            </p>
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to clear all locally stored data and reset to a clean slate?')) {
+                  localStorage.clear();
+                  localStorage.setItem('fm_mock_cleared_v3', 'true');
+                  window.location.reload();
+                }
+              }}
+              className="px-4 py-2.5 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all shadow-sm"
+            >
+              Reset Application to Fresh Clean State
             </button>
           </div>
         </div>
