@@ -10609,6 +10609,7 @@
               {currentRoute === 'diet-planner' && (
                 <AIDietPlannerView 
                   user={currentUser} 
+                  onUpdateUser={(updated) => setCurrentUser(prev => ({ ...prev, ...updated }))}
                   metrics={metrics} 
                   foods={foods}
                   onAddBatchLogs={(newLogs) => {
@@ -14349,55 +14350,130 @@
     // =========================================================================
 // =========================================================================
     // VIEW 9: AI CLINICAL NUTRITION & DIET PLANNER (ChatGPT Interactive Format)
+    // Instant Diet by Weight: Chat ONLY your weight (e.g. 85 kg, 90, 78) to get a full diet plan!
     // =========================================================================
-    function AIDietPlannerView({ user, metrics, foods = [], onAddBatchLogs, navigateTo, displayWeight, isMetric }) {
+    function AIDietPlannerView({ user, onUpdateUser, metrics, foods = [], onAddBatchLogs, navigateTo, displayWeight, isMetric }) {
       const userWeight = user.currentWeightKg || 74.5;
       const userTdee = metrics.tdee || 2400;
       const isOverweight = metrics.bmi?.isOverweight;
       const overweightKg = metrics.bmi?.overweightKg || 0;
 
-      // Smart initial meal plan generator
-      const createDietPlanData = (goal = 'fat_loss', diet = 'high_protein', customCal = null, customProt = null, variation = 0) => {
-        let cal = userTdee;
+      // Smart Weight Detection from User Input
+      const detectWeightFromQuery = (text) => {
+        if (!text) return null;
+        const s = text.trim().toLowerCase();
+
+        // 1. Matches with kg/kilos/kgs: "85 kg", "85kg", "85.5 kg", "85 kilograms"
+        const kgMatch = s.match(/(?:weight\s*(?:is|:)?\s*)?(\d{2,3}(?:\.\d+)?)\s*(?:kg|kgs|kilos|kilograms)\b/i);
+        if (kgMatch) {
+          const val = parseFloat(kgMatch[1]);
+          if (val >= 30 && val <= 350) return { val, unit: "kg" };
+        }
+
+        // 2. Matches with lbs/pounds: "180 lbs", "180lbs", "180 pounds"
+        const lbsMatch = s.match(/(?:weight\s*(?:is|:)?\s*)?(\d{2,3}(?:\.\d+)?)\s*(?:lbs|lb|pounds)\b/i);
+        if (lbsMatch) {
+          const val = parseFloat(lbsMatch[1]);
+          if (val >= 66 && val <= 770) {
+            return { val: Math.round((val / 2.20462) * 10) / 10, unit: "lbs", orig: val };
+          }
+        }
+
+        // 3. Matches explicit "weight is 85", "weight: 85", "weigh 85"
+        const weightWordMatch = s.match(/(?:weight|weigh)\s*(?:is|:)?\s*(\d{2,3}(?:\.\d+)?)/i);
+        if (weightWordMatch) {
+          const val = parseFloat(weightWordMatch[1]);
+          if (val >= 30 && val <= 300) return { val, unit: "kg" };
+        }
+
+        // 4. Exact number only: "85", "90.5", "80"
+        if (/^\s*(\d{2,3}(?:\.\d+)?)\s*$/.test(s)) {
+          const val = parseFloat(s.trim());
+          if (val >= 30 && val <= 300) return { val, unit: "kg" };
+        }
+
+        // 5. Lead number: "85 vegetarian", "90 fat loss" (ensure not grams of protein)
+        if (!/\d+\s*g(?:rams)?\b/i.test(s)) {
+          const leadNumMatch = s.match(/^(\d{2,3}(?:\.\d+)?)\s*(?:kg|kgs)?\s*(?:diet|plan|fat|veg|protein|muscle|loss|gain|recomp|cut|keto)/i);
+          if (leadNumMatch) {
+            const val = parseFloat(leadNumMatch[1]);
+            if (val >= 30 && val <= 300) return { val, unit: "kg" };
+          }
+        }
+
+        // 6. Prepositions: "for 84 kg", "at 90", "am 95", "i'm 72"
+        const prepMatch = s.match(/(?:for|at|am|i'm)\s*(\d{2,3}(?:\.\d+)?)\s*(?:kg)?\b/i);
+        if (prepMatch) {
+          const val = parseFloat(prepMatch[1]);
+          if (val >= 30 && val <= 300) return { val, unit: "kg" };
+        }
+
+        return null;
+      };
+
+      // Smart initial meal plan generator scaled to any weight
+      const createDietPlanData = (goal = "fat_loss", diet = "high_protein", customCal = null, customProt = null, variation = 0, planWeight = null) => {
+        const effWeight = planWeight || userWeight;
+        const effHeightCm = user.heightCm || 178;
+        const effHeightM = effHeightCm / 100;
+        const effAge = user.age || 28;
+        const effSex = user.sexForFormula || user.gender || "male";
+
+        // Mifflin-St Jeor BMR
+        const effBmr = Math.round((10 * effWeight) + (6.25 * effHeightCm) - (5 * effAge) + (effSex === "female" ? -161 : 5));
+        // Moderate activity TDEE
+        const effTdee = Math.round(effBmr * 1.45);
+
+        // Biometric analysis
+        const effBmi = Math.round((effWeight / (effHeightM * effHeightM)) * 10) / 10;
+        const effHealthyCeiling = Math.round(24.9 * (effHeightM * effHeightM) * 10) / 10;
+        const effHealthyFloor = Math.round(18.5 * (effHeightM * effHeightM) * 10) / 10;
+        const effIsOverweight = effBmi > 24.9;
+        const effIsUnderweight = effBmi < 18.5;
+        const effOverweightKg = effIsOverweight ? Math.round((effWeight - effHealthyCeiling) * 10) / 10 : 0;
+        const effOverweightLb = Math.round(effOverweightKg * 2.20462 * 10) / 10;
+        const effWeeksToHealthy = Math.ceil(effOverweightKg / 0.5);
+
+        let cal = effTdee;
         let pFactor = 1.8;
         let goalTitle = "Maintenance & Body Balance";
         let deficitLabel = "0 kcal (Energy Balance)";
 
-        if (goal === 'fat_loss') {
-          cal = customCal || Math.max(1300, userTdee - 500);
+        if (goal === "fat_loss" || (effIsOverweight && goal !== "muscle_gain")) {
+          cal = customCal || Math.max(1300, effTdee - 500);
           pFactor = 2.0;
-          goalTitle = "Fat Loss & Calorie Deficit";
-          deficitLabel = "-500 kcal/day (Safe Fat Loss Deficit)";
-        } else if (goal === 'rapid_cut') {
-          cal = customCal || Math.max(1200, userTdee - 700);
+          goalTitle = effIsOverweight ? `Fat Loss Deficit (+${effOverweightKg} kg Overweight)` : "Fat Loss & Calorie Deficit";
+          deficitLabel = "-500 kcal/day (Safe 0.5 kg/wk Fat Loss)";
+        } else if (goal === "rapid_cut") {
+          cal = customCal || Math.max(1200, effTdee - 700);
           pFactor = 2.2;
           goalTitle = "Aggressive Fat Loss Cut";
           deficitLabel = "-700 kcal/day (Maximum Safe Cut)";
-        } else if (goal === 'recomp') {
-          cal = customCal || Math.max(1400, userTdee - 200);
+        } else if (goal === "recomp") {
+          cal = customCal || Math.max(1400, effTdee - 200);
           pFactor = 2.0;
           goalTitle = "Body Recomposition";
           deficitLabel = "-200 kcal/day (High Protein Recomp)";
-        } else if (goal === 'muscle_gain') {
-          cal = customCal || (userTdee + 300);
+        } else if (goal === "muscle_gain" || effIsUnderweight) {
+          cal = customCal || (effTdee + 350);
           pFactor = 1.8;
           goalTitle = "Lean Muscle Hypertrophy";
-          deficitLabel = "+300 kcal/day (Lean Hypertrophy Surplus)";
+          deficitLabel = "+350 kcal/day (Lean Muscle Surplus)";
         } else if (customCal) {
           cal = customCal;
         }
 
-        const targetP = customProt || Math.round(userWeight * pFactor);
+        const targetP = customProt || Math.round(effWeight * pFactor);
         const targetFat = Math.round((cal * 0.25) / 9);
         const targetCarbs = Math.max(35, Math.round((cal - (targetP * 4) - (targetFat * 9)) / 4));
         const varMod = variation % 2;
 
-        let meals = [];
+        let rawMeals = [];
 
-        if (diet === 'indian_veg') {
-          meals = [
+        if (diet === "indian_veg") {
+          rawMeals = [
             {
-              meal: 'breakfast',
+              meal: "breakfast",
               title: "Breakfast • Desi High-Protein Kickstart",
               time: "08:00 AM",
               tip: "Boil sprouted moong with a pinch of rock salt and chaat masala. Serve with warm milk.",
@@ -14409,7 +14485,7 @@
               ]
             },
             {
-              meal: 'lunch',
+              meal: "lunch",
               title: "Lunch • Traditional Protein Thali Engine",
               time: "01:00 PM",
               tip: "Cook dal with cumin (jeera) tadka. Pair fresh paneer with whole wheat rotis.",
@@ -14421,7 +14497,7 @@
               ]
             },
             {
-              meal: 'snack',
+              meal: "snack",
               title: "Evening Snack • Satiating Fiber & Plant Protein",
               time: "05:00 PM",
               tip: "Roasted chana provides sustained satiety without refined carbohydrates.",
@@ -14432,7 +14508,7 @@
               ]
             },
             {
-              meal: 'dinner',
+              meal: "dinner",
               title: "Dinner • High-Fiber Legume Bowl",
               time: "08:30 PM",
               tip: "Pressure-cook Rajma or Chole with fresh ginger, garlic, and aromatic spices.",
@@ -14443,10 +14519,10 @@
               ]
             }
           ];
-        } else if (diet === 'vegan') {
-          meals = [
+        } else if (diet === "vegan") {
+          rawMeals = [
             {
-              meal: 'breakfast',
+              meal: "breakfast",
               title: "Breakfast • 100% Plant-Based Amino Kickstart",
               time: "08:00 AM",
               tip: "Crumble firm tofu with nutritional yeast, turmeric, and sea salt.",
@@ -14457,7 +14533,7 @@
               ]
             },
             {
-              meal: 'lunch',
+              meal: "lunch",
               title: "Lunch • Complete Amino Legume & Grain Bowl",
               time: "01:00 PM",
               tip: "Combining chickpeas with quinoa yields all 9 essential amino acids.",
@@ -14468,7 +14544,7 @@
               ]
             },
             {
-              meal: 'snack',
+              meal: "snack",
               title: "Afternoon Fuel • Micronutrient Density",
               time: "04:30 PM",
               tip: "Nuts and seeds provide sustained satiety and essential minerals.",
@@ -14478,7 +14554,7 @@
               ]
             },
             {
-              meal: 'dinner',
+              meal: "dinner",
               title: "Dinner • High-Protein Soya Bowl",
               time: "08:00 PM",
               tip: "Soya chunks have over 52% protein density for lean muscle repair.",
@@ -14489,10 +14565,10 @@
               ]
             }
           ];
-        } else if (diet === 'low_carb') {
-          meals = [
+        } else if (diet === "low_carb") {
+          rawMeals = [
             {
-              meal: 'breakfast',
+              meal: "breakfast",
               title: "Breakfast • Ketogenic Satiety & Healthy Fats",
               time: "08:30 AM",
               tip: "Cook eggs in olive oil or grass-fed butter with baby spinach.",
@@ -14503,7 +14579,7 @@
               ]
             },
             {
-              meal: 'lunch',
+              meal: "lunch",
               title: "Lunch • Lean Protein & High Fiber Greens",
               time: "01:00 PM",
               tip: "High protein intake spares lean muscle mass during ketogenic adaptation.",
@@ -14514,7 +14590,7 @@
               ]
             },
             {
-              meal: 'snack',
+              meal: "snack",
               title: "Snack • Healthy Fats & Ketone Sustenance",
               time: "05:00 PM",
               tip: "Zero refined sugar ensures clean metabolic fat oxidation.",
@@ -14524,7 +14600,7 @@
               ]
             },
             {
-              meal: 'dinner',
+              meal: "dinner",
               title: "Dinner • Omega-3 Rich Fish & Low-Carb Brassica",
               time: "08:00 PM",
               tip: "Salmon provides anti-inflammatory EPA and DHA omega-3 fatty acids.",
@@ -14536,9 +14612,9 @@
           ];
         } else {
           // Default: High-Protein Balanced
-          meals = [
+          rawMeals = [
             {
-              meal: 'breakfast',
+              meal: "breakfast",
               title: "Breakfast • Anabolic Muscle Initiation",
               time: "08:00 AM",
               tip: "Serve boiled eggs with warm rolled oats seasoned with cinnamon and fresh apple.",
@@ -14550,7 +14626,7 @@
               ]
             },
             {
-              meal: 'lunch',
+              meal: "lunch",
               title: "Lunch • Lean Chicken & Clean Complex Carbs",
               time: "01:00 PM",
               tip: "Pan-sear chicken with 1 tsp olive oil, garlic, and freshly cracked black pepper.",
@@ -14562,7 +14638,7 @@
               ]
             },
             {
-              meal: 'snack',
+              meal: "snack",
               title: "Afternoon Recovery • Leucine Satiety Bridge",
               time: "04:30 PM",
               tip: "Greek yogurt provides slow-digesting micellar casein and live probiotics.",
@@ -14573,7 +14649,7 @@
               ]
             },
             {
-              meal: 'dinner',
+              meal: "dinner",
               title: "Dinner • Lean Fish & Cellular Night Recovery",
               time: "08:00 PM",
               tip: "Bake salmon fillet with fresh dill, lemon juice, and a side of baked sweet potato.",
@@ -14586,19 +14662,47 @@
           ];
         }
 
-        // Process meal totals
-        const processedMeals = meals.map(m => {
+        // Dynamically scale portions based on target calories
+        let baseTotalCal = 0;
+        rawMeals.forEach(m => {
+          m.items.forEach(it => { baseTotalCal += it.cal || 0; });
+        });
+
+        const calScale = baseTotalCal > 0 ? (cal / baseTotalCal) : 1.0;
+
+        // Process meal totals with scaled items
+        const processedMeals = rawMeals.map(m => {
           let c = 0, p = 0, cb = 0, f = 0, fib = 0;
-          m.items.forEach(it => {
-            c += it.cal || 0;
-            p += it.protein || 0;
-            cb += it.carbs || 0;
-            f += it.fat || 0;
-            fib += it.fiber || 0;
+          const scaledItems = m.items.map(it => {
+            const scaledGrams = Math.max(10, Math.round((it.grams * calScale) / 5) * 5);
+            const ratio = scaledGrams / (it.grams || 1);
+            const itemCal = Math.round(it.cal * ratio);
+            const itemP = Math.round(it.protein * ratio * 10) / 10;
+            const itemCb = Math.round(it.carbs * ratio * 10) / 10;
+            const itemF = Math.round(it.fat * ratio * 10) / 10;
+            const itemFib = Math.round((it.fiber || 0) * ratio * 10) / 10;
+
+            c += itemCal;
+            p += itemP;
+            cb += itemCb;
+            f += itemF;
+            fib += itemFib;
+
+            return {
+              name: it.name,
+              grams: scaledGrams,
+              cal: itemCal,
+              protein: itemP,
+              carbs: itemCb,
+              fat: itemF,
+              fiber: itemFib
+            };
           });
+
           const mealP = Math.round(p * 10) / 10;
           return {
             ...m,
+            items: scaledItems,
             totals: {
               cal: Math.round(c),
               protein: mealP,
@@ -14626,6 +14730,15 @@
           targetP,
           targetCarbs,
           targetFat,
+          weightAnalyzed: effWeight,
+          bmi: effBmi,
+          isOverweight: effIsOverweight,
+          overweightKg: effOverweightKg,
+          overweightLb: effOverweightLb,
+          weeksToHealthy: effWeeksToHealthy,
+          bmr: effBmr,
+          tdee: effTdee,
+          healthyCeilingKg: effHealthyCeiling,
           totals: {
             cal: Math.round(totCal),
             protein: Math.round(totP * 10) / 10,
@@ -14638,129 +14751,165 @@
       };
 
       // Initial chat state with default welcome message
-      const initialGreeting = `Hello ${user.displayName || 'there'}! I'm your FitMetric AI Clinical Dietitian.
+      const initialGreeting = `Hello ${user.displayName || "there"}! I'm your FitMetric AI Clinical Dietitian.
 
-Based on your current profile:
-• Body Weight: ${userWeight} kg (${displayWeight(userWeight)})
-• Height: ${user.heightCm} cm
-• Calculated TDEE: ~${userTdee} kcal/day
-${isOverweight ? `• Overweight Analysis: +${overweightKg} kg above healthy BMI ceiling. Recommended: -500 kcal fat loss deficit.` : '• Status: Optimal baseline metabolic health.'}
+⚡ **Instant Diet by Weight**: Simply chat **ONLY YOUR WEIGHT** (e.g. "85 kg", "90", or "78 kg vegetarian") and I will instantly:
+• Detect your weight and calculate your exact BMI, WHO Healthy Ceiling, and Overweight Surplus (in kg)
+• Compute your personal BMR and TDEE using Mifflin-St Jeor
+• Formulate your clinical calorie deficit and protein target (Morton et al. 2018)
+• Generate a complete 4-meal daily nutrition plan calibrated to your weight ready to log!
 
-You can ask me to generate a personalized meal plan, swap ingredients, create Indian vegetarian or vegan plans, adjust your calorie target, or ask any nutrition questions. How would you like to fuel your body today?`;
+Current active profile: **${userWeight} kg** (TDEE ~${userTdee} kcal${isOverweight ? ` • +${overweightKg} kg Overweight` : ""}).
+
+What is your body weight today, or what would you like to plan?`;
 
       const [messages, setMessages] = useState([
         {
-          id: 'welcome-msg',
-          sender: 'ai',
+          id: "welcome-msg",
+          sender: "ai",
           text: initialGreeting,
-          plan: createDietPlanData(isOverweight ? 'fat_loss' : (user.fitnessGoal || 'fat_loss'), 'high_protein'),
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          plan: createDietPlanData(isOverweight ? "fat_loss" : (user.fitnessGoal || "fat_loss"), "high_protein"),
+          analyzedWeight: userWeight,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         }
       ]);
 
-      const [inputQuery, setInputQuery] = useState('');
+      const [inputQuery, setInputQuery] = useState("");
       const [isTyping, setIsTyping] = useState(false);
       const [loggedNoticeId, setLoggedNoticeId] = useState(null);
       const [copiedNoticeId, setCopiedNoticeId] = useState(null);
+      const [savedWeightNoticeId, setSavedWeightNoticeId] = useState(null);
       const messagesEndRef = useRef(null);
 
       const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       };
 
       useEffect(() => {
         scrollToBottom();
       }, [messages, isTyping]);
 
-      // Smart Natural Language Chat Dispatcher
+      // Smart Natural Language Chat Dispatcher with Instant Weight Detection
       const handleSendMessage = (textToSend = null) => {
         const query = (textToSend || inputQuery).trim();
         if (!query) return;
 
         const userMsg = {
-          id: 'user-' + Date.now(),
-          sender: 'user',
+          id: "user-" + Date.now(),
+          sender: "user",
           text: query,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         };
 
         setMessages(prev => [...prev, userMsg]);
-        if (!textToSend) setInputQuery('');
+        if (!textToSend) setInputQuery("");
         setIsTyping(true);
 
         setTimeout(() => {
           const lower = query.toLowerCase();
 
-          // Detect intent
-          let detectedGoal = 'fat_loss';
-          if (lower.includes('bulk') || lower.includes('muscle') || lower.includes('hypertrophy') || lower.includes('gain')) {
-            detectedGoal = 'muscle_gain';
-          } else if (lower.includes('rapid') || lower.includes('aggressive')) {
-            detectedGoal = 'rapid_cut';
-          } else if (lower.includes('recomp')) {
-            detectedGoal = 'recomp';
-          } else if (lower.includes('maintain') || lower.includes('maintenance')) {
-            detectedGoal = 'maintenance';
+          // 1. DETECT WEIGHT
+          const detectedWeightObj = detectWeightFromQuery(query);
+          const activeWeight = detectedWeightObj ? detectedWeightObj.val : userWeight;
+
+          // 2. DETECT GOAL INTENT
+          let detectedGoal = "fat_loss";
+          if (lower.includes("bulk") || lower.includes("muscle") || lower.includes("hypertrophy") || lower.includes("gain")) {
+            detectedGoal = "muscle_gain";
+          } else if (lower.includes("rapid") || lower.includes("aggressive")) {
+            detectedGoal = "rapid_cut";
+          } else if (lower.includes("recomp")) {
+            detectedGoal = "recomp";
+          } else if (lower.includes("maintain") || lower.includes("maintenance")) {
+            detectedGoal = "maintenance";
           }
 
-          let detectedDiet = 'high_protein';
-          if (lower.includes('indian') || lower.includes('desi') || lower.includes('paneer') || lower.includes('vegetarian') || lower.includes('veg')) {
-            if (!lower.includes('vegan')) detectedDiet = 'indian_veg';
+          // 3. DETECT DIET PREFERENCE
+          let detectedDiet = "high_protein";
+          if (lower.includes("indian") || lower.includes("desi") || lower.includes("paneer") || lower.includes("vegetarian") || lower.includes("veg")) {
+            if (!lower.includes("vegan")) detectedDiet = "indian_veg";
           }
-          if (lower.includes('vegan') || lower.includes('plant')) {
-            detectedDiet = 'vegan';
-          } else if (lower.includes('keto') || lower.includes('low carb')) {
-            detectedDiet = 'low_carb';
-          } else if (lower.includes('mediterranean') || lower.includes('fish')) {
-            detectedDiet = 'mediterranean';
+          if (lower.includes("vegan") || lower.includes("plant")) {
+            detectedDiet = "vegan";
+          } else if (lower.includes("keto") || lower.includes("low carb")) {
+            detectedDiet = "low_carb";
+          } else if (lower.includes("mediterranean") || lower.includes("fish")) {
+            detectedDiet = "mediterranean";
           }
 
-          // Detect custom calories
+          // 4. DETECT CUSTOM CALORIES OR PROTEIN
           const calMatch = lower.match(/(\d{4})\s*(?:kcal|cal|calories)?/);
           const customCal = calMatch ? parseInt(calMatch[1]) : null;
 
-          // Detect custom protein
           const protMatch = lower.match(/(\d{2,3})\s*g(?:rams)?\s*protein/);
           const customProt = protMatch ? parseInt(protMatch[1]) : null;
 
-          const newPlan = createDietPlanData(detectedGoal, detectedDiet, customCal, customProt, Math.floor(Math.random() * 10));
+          // Generate plan using activeWeight!
+          const newPlan = createDietPlanData(detectedGoal, detectedDiet, customCal, customProt, Math.floor(Math.random() * 10), activeWeight);
 
-          let responseText = `Here is your customized clinical nutrition program formulated for **${newPlan.goalTitle}** (${newPlan.deficitLabel}).`;
-          if (detectedDiet === 'indian_veg') {
+          // Build conversational clinical response
+          let responseText = "";
+
+          if (detectedWeightObj) {
+            const isLbs = detectedWeightObj.unit === "lbs";
+            responseText += `🎯 **Body Weight Detected: ${activeWeight} kg (${Math.round(activeWeight * 2.20462 * 10) / 10} lbs)**\n\n`;
+            responseText += `📊 **Clinical Assessment for ${activeWeight} kg**:\n`;
+            responseText += `• **BMI**: ${newPlan.bmi} kg/m² (${newPlan.bmi < 18.5 ? "Underweight" : newPlan.bmi <= 24.9 ? "Normal Weight" : newPlan.bmi < 30 ? "Overweight" : "Obese Class"})\n`;
+            
+            if (newPlan.isOverweight) {
+              responseText += `• **Overweight Status**: **+${newPlan.overweightKg} kg (+${newPlan.overweightLb} lbs) OVER** healthy WHO ceiling (${newPlan.healthyCeilingKg} kg)\n`;
+              responseText += `• **Safe Target Timeline**: **~${newPlan.weeksToHealthy} weeks** to reach healthy weight (at safe 0.5 kg/week fat reduction)\n`;
+            } else if (newPlan.bmi < 18.5) {
+              responseText += `• **Status**: Underweight (Target healthy floor: 58 kg)\n`;
+            } else {
+              responseText += `• **Status**: **Optimal Healthy Weight Range** (${newPlan.bmi} BMI)\n`;
+            }
+
+            responseText += `• **Basal Metabolic Rate (BMR)**: ${newPlan.bmr} kcal/day\n`;
+            responseText += `• **Daily Energy Expenditure (TDEE)**: ~${newPlan.tdee} kcal/day\n`;
+            responseText += `• **Prescribed Calorie Target**: **${newPlan.targetCal} kcal/day** (${newPlan.deficitLabel})\n`;
+            responseText += `• **Prescribed Protein Target**: **${newPlan.targetP} g/day** (~2.0 g/kg bodyweight for optimal lean muscle retention)\n\n`;
+            responseText += `Here is your customized clinical nutrition program formulated specifically for **${activeWeight} kg**:`;
+          } else {
+            responseText += `Here is your customized clinical nutrition program formulated for **${newPlan.goalTitle}** (${newPlan.deficitLabel}).\n\n`;
+          }
+
+          if (detectedDiet === "indian_veg") {
             responseText += ` Featuring authentic, nutrient-dense Indian vegetarian protein staples (Paneer, yellow Dal, Sprouts, Dahi, and Rajma) structured to meet your amino acid threshold.`;
-          } else if (detectedDiet === 'vegan') {
+          } else if (detectedDiet === "vegan") {
             responseText += ` 100% plant-based, pairing complementary grains and legumes to ensure a complete essential amino acid profile.`;
-          } else if (detectedDiet === 'low_carb') {
+          } else if (detectedDiet === "low_carb") {
             responseText += ` Calibrated for low-glycemic fat adaptation with high protein to protect lean body mass.`;
           } else {
             responseText += ` Optimized around clean, high-leucine animal and dairy proteins to stimulate Muscle Protein Synthesis (MPS).`;
           }
 
           const aiMsg = {
-            id: 'ai-' + Date.now(),
-            sender: 'ai',
+            id: "ai-" + Date.now(),
+            sender: "ai",
             text: responseText,
             plan: newPlan,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            analyzedWeight: activeWeight,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           };
 
           setIsTyping(false);
           setMessages(prev => [...prev, aiMsg]);
-        }, 800);
+        }, 700);
       };
 
       // Action: Log complete plan into Daily Food Tracker
       const handleLogPlanToTracker = (planData, msgId) => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = new Date().toISOString().split("T")[0];
         const newLogs = [];
 
         planData.meals.forEach(m => {
           m.items.forEach((it, idx) => {
             newLogs.push({
-              id: 'ai-chat-log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
-              foodId: 'food-ai-' + idx,
+              id: "ai-chat-log-" + Date.now() + "-" + Math.random().toString(36).substr(2, 6),
+              foodId: "food-ai-" + idx,
               foodName: it.name,
-              category: 'ai_curated',
+              category: "ai_curated",
               meal: m.meal,
               servingG: it.grams,
               cal: it.cal,
@@ -14770,7 +14919,7 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
               fiber: it.fiber,
               date: todayStr,
               timestamp: new Date().toISOString(),
-              source: 'FitMetric AI ChatGPT Nutritionist'
+              source: "FitMetric AI ChatGPT Nutritionist"
             });
           });
         });
@@ -14784,6 +14933,7 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
       const handleCopyPlan = (planData, msgId) => {
         let txt = `=================================================\n`;
         txt += `FITMETRIC AI CLINICAL DIET PLAN (ChatGPT Engine)\n`;
+        txt += `Calibrated Body Weight: ${planData.weightAnalyzed || userWeight} kg\n`;
         txt += `Goal: ${planData.goalTitle} (${planData.deficitLabel})\n`;
         txt += `Daily Energy: ${planData.totals.cal} kcal (Target: ${planData.targetCal})\n`;
         txt += `Macros: Protein: ${planData.totals.protein}g | Carbs: ${planData.totals.carbs}g | Fat: ${planData.totals.fat}g | Fiber: ${planData.totals.fiber}g\n`;
@@ -14820,11 +14970,11 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
                 <div className="flex items-center gap-2">
                   <h1 className="text-base font-extrabold text-fm-text">FitMetric AI Nutritionist</h1>
                   <span className="text-[10px] font-extrabold bg-red-100 text-red-700 px-2 py-0.5 rounded-full border border-red-200">
-                    GPT-4o Engine
+                    Weight-To-Diet Engine
                   </span>
                 </div>
                 <p className="text-xs text-fm-muted">
-                  Evidence-based meal planning calibrated to {user.displayName} ({userWeight} kg • TDEE ~{userTdee} kcal)
+                  Evidence-based meal planning • Chat ONLY your weight (e.g. "85 kg") to generate instant diet plans!
                 </p>
               </div>
             </div>
@@ -14833,11 +14983,12 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
               <button 
                 type="button"
                 onClick={() => setMessages([{
-                  id: 'welcome-msg',
-                  sender: 'ai',
+                  id: "welcome-msg",
+                  sender: "ai",
                   text: initialGreeting,
-                  plan: createDietPlanData('fat_loss', 'high_protein'),
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  plan: createDietPlanData("fat_loss", "high_protein"),
+                  analyzedWeight: userWeight,
+                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                 }])}
                 className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-fm-border text-fm-muted hover:bg-fm-surfaceSubtle transition-all"
                 title="Reset conversation"
@@ -14852,24 +15003,24 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
             {messages.map(msg => (
               <div 
                 key={msg.id}
-                className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
               >
                 {/* AI Avatar */}
-                {msg.sender === 'ai' && (
+                {msg.sender === "ai" && (
                   <div className="w-8 h-8 rounded-full bg-red-600 text-white flex-shrink-0 flex items-center justify-center text-sm shadow-sm">
                     🤖
                   </div>
                 )}
 
                 {/* Message Bubble */}
-                <div className={`max-w-[88%] md:max-w-[80%] space-y-3 ${
-                  msg.sender === 'user' 
-                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white p-4 rounded-2xl rounded-tr-sm shadow-md' 
-                    : 'bg-fm-card p-5 rounded-2xl rounded-tl-sm border border-fm-border shadow-fm-card text-fm-text'
+                <div className={`max-w-[88%] md:max-w-[82%] space-y-3 ${
+                  msg.sender === "user" 
+                    ? "bg-gradient-to-r from-red-600 to-red-700 text-white p-4 rounded-2xl rounded-tr-sm shadow-md" 
+                    : "bg-fm-card p-5 rounded-2xl rounded-tl-sm border border-fm-border shadow-fm-card text-fm-text"
                 }`}>
                   {/* Timestamp & Sender */}
                   <div className="flex items-center justify-between text-[11px] font-semibold opacity-75 border-b pb-1.5 mb-2 border-current/10">
-                    <span>{msg.sender === 'user' ? 'You' : 'FitMetric AI Dietitian'}</span>
+                    <span>{msg.sender === "user" ? "You" : "FitMetric AI Dietitian"}</span>
                     <span>{msg.timestamp}</span>
                   </div>
 
@@ -14884,7 +15035,9 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
                       {/* Macro Summary Header Strip */}
                       <div className="p-3 rounded-xl bg-fm-surfaceSubtle border border-fm-border">
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <span className="text-xs font-extrabold text-fm-text">{msg.plan.goalTitle}</span>
+                          <span className="text-xs font-extrabold text-fm-text">
+                            {msg.plan.goalTitle} {msg.analyzedWeight ? `(${msg.analyzedWeight} kg)` : ""}
+                          </span>
                           <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
                             {msg.plan.deficitLabel}
                           </span>
@@ -14980,10 +15133,27 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
                           <span>{copiedNoticeId === msg.id ? "Copied!" : "Copy Plan"}</span>
                         </button>
 
+                        {/* Button to save detected weight into profile */}
+                        {onUpdateUser && msg.analyzedWeight && Math.abs(msg.analyzedWeight - (user.currentWeightKg || 74.5)) > 0.1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onUpdateUser({ currentWeightKg: msg.analyzedWeight });
+                              setSavedWeightNoticeId(msg.id);
+                              setTimeout(() => setSavedWeightNoticeId(null), 3000);
+                            }}
+                            className="px-3 py-2 text-xs font-bold rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 transition-all flex items-center gap-1.5 shadow-sm"
+                            title="Update active profile weight to sync all 12 calculators and dashboard"
+                          >
+                            <span>💾</span>
+                            <span>{savedWeightNoticeId === msg.id ? `✓ Saved ${msg.analyzedWeight} kg to Profile!` : `Set ${msg.analyzedWeight} kg as Profile Weight`}</span>
+                          </button>
+                        )}
+
                         {loggedNoticeId === msg.id && (
                           <button
                             type="button"
-                            onClick={() => navigateTo('food-log')}
+                            onClick={() => navigateTo("food-log")}
                             className="px-3 py-2 text-xs font-bold rounded-lg bg-fm-forest text-white hover:bg-fm-forestDark transition-all"
                           >
                             Open Daily Tracker ➔
@@ -14995,7 +15165,7 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
                 </div>
 
                 {/* User Avatar */}
-                {msg.sender === 'user' && (
+                {msg.sender === "user" && (
                   <div className="w-8 h-8 rounded-full bg-stone-800 text-white flex-shrink-0 flex items-center justify-center text-xs font-extrabold shadow-sm">
                     U
                   </div>
@@ -15022,14 +15192,16 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompt Suggestion Chips */}
+          {/* Quick Weight Prompt Chips */}
           <div className="flex overflow-x-auto gap-2 pb-1 text-xs">
             {[
-              { label: "⚡ 1,800 kcal Fat Loss Plan", prompt: "Create a 1800 kcal fat loss diet plan with high protein" },
-              { label: "🍛 Indian Vegetarian Plan (140g Protein)", prompt: "Create an authentic Indian vegetarian meal plan with 140g protein and dal/paneer" },
-              { label: "🥑 Low Carb Keto Fat Loss", prompt: "Generate a low-carb ketogenic meal plan for fat loss" },
-              { label: "🌱 Plant-Based Vegan Plan", prompt: "Create a 100% plant-based vegan diet plan for lean muscle" },
-              { label: "🍗 High-Protein Balanced (2,000 kcal)", prompt: "Give me a 2000 kcal high protein balanced meal plan with chicken and eggs" }
+              { label: "⚖️ 85 kg Fat Loss Diet", prompt: "85 kg" },
+              { label: "⚖️ 90 kg Diet Plan", prompt: "90 kg" },
+              { label: "🍛 80 kg Indian Vegetarian", prompt: "80 kg authentic Indian vegetarian diet plan" },
+              { label: "🥑 95 kg Low Carb Keto", prompt: "95 kg low carb keto meal plan" },
+              { label: "🍗 75 kg High Protein", prompt: "75 kg high protein balanced diet plan" },
+              { label: "🌱 70 kg Vegan Plan", prompt: "70 kg vegan diet plan" },
+              { label: "⚡ 100 kg Rapid Cut", prompt: "100 kg aggressive fat loss plan" }
             ].map((chip, idx) => (
               <button
                 key={idx}
@@ -15042,6 +15214,29 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
             ))}
           </div>
 
+          {/* Quick Chat Weight Helper Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-red-50 via-rose-50 to-amber-50 border border-red-200 text-xs text-red-900 shadow-sm">
+            <div className="flex items-center gap-2 font-bold">
+              <span className="text-base">⚖️</span>
+              <span>Chat ONLY Your Weight:</span>
+              <span className="font-normal text-red-800">
+                Type any number (e.g. <strong>85</strong>, <strong>90 kg</strong>, <strong>78</strong>) to get an instant clinical diet plan!
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {["80 kg", "85 kg", "90 kg", "95 kg"].map((wt) => (
+                <button
+                  key={wt}
+                  type="button"
+                  onClick={() => handleSendMessage(wt)}
+                  className="px-2.5 py-1 rounded-lg bg-white hover:bg-red-100 border border-red-300 font-extrabold text-[10px] text-red-700 shadow-xs transition-all"
+                >
+                  +{wt}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ChatGPT Bottom Input Box */}
           <div className="bg-fm-card p-3 rounded-2xl border border-fm-border shadow-lg flex items-center gap-2">
             <span className="text-lg pl-2 text-fm-muted">💬</span>
@@ -15050,12 +15245,12 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
               value={inputQuery}
               onChange={e => setInputQuery(e.target.value)}
               onKeyDown={e => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   e.preventDefault();
                   handleSendMessage();
                 }
               }}
-              placeholder="Ask FitMetric AI to create a meal plan, swap an ingredient, adjust calories, or ask about macros..."
+              placeholder="Chat ONLY your weight (e.g. '85 kg', '90', '78 kg veg') for an instant diet plan..."
               className="flex-1 px-3 py-2.5 text-xs sm:text-sm font-medium bg-transparent border-none focus:outline-none text-fm-text"
             />
             <button
@@ -15064,8 +15259,8 @@ You can ask me to generate a personalized meal plan, swap ingredients, create In
               onClick={() => handleSendMessage()}
               className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
                 inputQuery.trim() 
-                  ? 'bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/30 cursor-pointer' 
-                  : 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                  ? "bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/30 cursor-pointer" 
+                  : "bg-stone-200 text-stone-400 cursor-not-allowed"
               }`}
             >
               ↑
