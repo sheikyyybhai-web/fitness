@@ -1,0 +1,20 @@
+{
+  "name": "fitness-metric",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fitness Metric — Evidence-Based Fitness, Nutrition & Biomechanics Analytics Platform",
+  "scripts": {
+    "test": "powershell -ExecutionPolicy Bypass -File tests/run-tests.ps1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.6",
+    "canvas-confetti": "^1.9.3",
+    "chart.js": "^4.4.6",
+    "lucide-react": "^0.453.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
