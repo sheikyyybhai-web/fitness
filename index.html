@@ -10224,10 +10224,18 @@
               </form>
             )}
 
-            <div className="p-3.5 border-t border-fm-border bg-fm-surfaceSubtle text-center">
+            <div className="p-3.5 border-t border-fm-border bg-fm-surfaceSubtle flex items-center justify-between text-xs">
               <span className="text-[11px] text-fm-muted">
-                Fitness Metric • Member Access Only
+                Need Administrator Clearance?
               </span>
+              <button
+                type="button"
+                onClick={() => { onClose(); window.location.hash = '#/admin-login'; }}
+                className="text-[11px] font-bold text-red-500 hover:text-red-400 flex items-center gap-1"
+              >
+                <span>🛡️ Admin Session Gateway</span>
+                <span>➔</span>
+              </button>
             </div>
           </div>
         </div>
@@ -10914,11 +10922,61 @@
                 <button
                   type="button"
                   onClick={() => setAuthModalOpen(true)}
-                  className="w-full text-xs font-bold py-2 px-3 rounded-xl border border-fm-border bg-white text-fm-text hover:bg-stone-50 transition-all text-center shadow-xs"
+                  className="w-full text-xs font-bold py-2 px-3 rounded-xl border border-fm-border bg-[var(--bg-card)] text-fm-text hover:bg-[var(--bg-elevated)] transition-all text-center shadow-xs"
                 >
                   👤 User Profile & Sign In
                 </button>
               )}
+
+              {/* Administrator Session Card - Directly down below User Session */}
+              <div className="pt-2.5 border-t border-fm-border/60 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-fm-muted flex items-center gap-1.5">
+                    <span>🛡️</span>
+                    <span>Admin Master Session:</span>
+                  </span>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-red-900/40 text-red-400 border border-red-500/30">
+                    Master L4
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-fm-border text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-fm-muted">Operator:</span>
+                    <span className="font-bold text-fm-text font-mono text-[11px]">admin@fitnessmetric.io</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-fm-muted">Token:</span>
+                    <span className="font-mono text-[10px] text-emerald-400">FM-SEC-ADM-9941</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-fm-muted">Status:</span>
+                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                      Active Guarded
+                    </span>
+                  </div>
+                </div>
+
+                {currentUser.role === 'admin' ? (
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('admin')}
+                    className="w-full text-xs font-black py-2 px-3 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all text-center shadow-xs flex items-center justify-center gap-1.5"
+                  >
+                    <span>🛡️ Open Admin Console</span>
+                    <span>➔</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('admin-login')}
+                    className="w-full text-xs font-bold py-2 px-3 rounded-xl border border-red-500/40 bg-red-950/20 hover:bg-red-950/40 text-red-400 hover:text-red-300 transition-all text-center flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <span>🔐 Admin Session Gateway</span>
+                  </button>
+                )}
+              </div>
             </div>
           </aside>
 
@@ -11089,6 +11147,40 @@
                   </button>
                 )}
                 <button onClick={() => { navigateTo('settings'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded-lg text-sm font-semibold hover:bg-fm-surfaceSubtle">Settings & Supabase</button>
+                
+                {/* Mobile Admin Master Session Card */}
+                <div className="pt-2 border-t border-fm-border mt-2 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-extrabold text-fm-text flex items-center gap-1.5">
+                      <span>🛡️</span>
+                      <span>Admin Master Session</span>
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-900/40 text-red-400 border border-red-500/30 uppercase">
+                      L4 Root
+                    </span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-[var(--bg-elevated)] border border-fm-border text-[11px] flex items-center justify-between">
+                    <span className="text-fm-muted">Token: FM-SEC-ADM-9941</span>
+                    <span className="text-emerald-400 font-bold">● Active Guard</span>
+                  </div>
+                  {currentUser.role === 'admin' ? (
+                    <button
+                      type="button"
+                      onClick={() => { navigateTo('admin'); setMobileMenuOpen(false); }}
+                      className="w-full py-1.5 px-3 rounded-lg bg-red-600 text-white font-bold text-xs text-center"
+                    >
+                      🛡️ Open Admin Console
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { navigateTo('admin-login'); setMobileMenuOpen(false); }}
+                      className="w-full py-1.5 px-3 rounded-lg border border-red-500/40 bg-red-950/20 text-red-400 font-bold text-xs text-center"
+                    >
+                      🔐 Admin Session Gateway
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -12087,7 +12179,8 @@
           {/* Calculator Tool Navigation Tabs */}
           <div className="flex overflow-x-auto gap-1.5 pb-2 border-b border-fm-border">
             {[
-              { id: 'nutrition_auto', label: '🥗 Daily Grams by Weight (Protein/Fiber/Macros)' },
+              { id: 'all_12', label: '📊 All 12 Clinical Results Board' },
+              { id: 'nutrition_auto', label: '🥗 Daily Grams by Weight' },
               { id: 'bmi', label: '1. BMI' },
               { id: 'bmr', label: '2. BMR' },
               { id: 'tdee', label: '3. TDEE' },
@@ -12423,6 +12516,240 @@
             <div className="lg:col-span-7 bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card flex flex-col justify-between">
               {/* Dynamic Tab Calculation Content */}
               <div>
+                {/* 12 SCIENTIFICALLY DOCUMENTED FORMULAS: MASTER CLINICAL BOARD */}
+                {activeTab === 'all_12' && (() => {
+                  const curBmi = Calculations.bmi(weight, height);
+                  const curBmr = Calculations.bmr(weight, height, age, sex);
+                  const curTdee = Calculations.tdee(curBmr, activity);
+                  const curLbm = Calculations.lbm(weight, height, sex);
+                  const curFm = Calculations.fatMass(weight, curLbm.lbmKg);
+                  const curBf = Calculations.bodyFatDeurenberg(weight, height, age, sex);
+                  const curRefW = Calculations.referenceWeight(height, sex);
+                  const maxHealthyWaist = Math.round(height * 0.5);
+                  const curProt = Calculations.proteinReq(weight, protFactor);
+                  const curFiber = Calculations.fiberReq(age, sex, curTdee);
+                  const curCalGoal = Calculations.calorieGoal(curTdee, user.fitnessGoal || 'fat_loss', sex);
+                  const curMacros = Calculations.macroPlanner(curCalGoal.target, 30, 40, 30);
+
+                  const all12Formulas = [
+                    {
+                      num: 1,
+                      id: 'bmi',
+                      name: 'Body Mass Index (BMI)',
+                      result: `${curBmi.val}`,
+                      unit: curBmi.cat,
+                      formula: 'Weight (kg) / [Height (m)]²',
+                      calc: `${weight} kg / ${(height/100).toFixed(2)}² = ${curBmi.val}`,
+                      ref: 'WHO Technical Report Series 854 (1995)',
+                      badgeBg: curBmi.bg,
+                      badgeColor: curBmi.color,
+                      note: 'Epidemiological adiposity screening index'
+                    },
+                    {
+                      num: 2,
+                      id: 'bmr',
+                      name: 'Basal Metabolic Rate (BMR)',
+                      result: `${curBmr}`,
+                      unit: 'kcal / day',
+                      formula: '10×W + 6.25×H - 5×A + (5 or -161)',
+                      calc: `10×${weight} + 6.25×${height} - 5×${age} + ${sex === 'male' ? 5 : -161} = ${curBmr}`,
+                      ref: 'Mifflin MD, St Jeor ST et al. Am J Clin Nutr (1990)',
+                      badgeBg: 'bg-red-900/30',
+                      badgeColor: 'text-red-400',
+                      note: 'Resting cellular & vital organ expenditure'
+                    },
+                    {
+                      num: 3,
+                      id: 'tdee',
+                      name: 'Total Daily Energy Expenditure',
+                      result: `${curTdee}`,
+                      unit: 'kcal / day',
+                      formula: 'BMR × Physical Activity Factor',
+                      calc: `${curBmr} kcal × PAL Factor = ${curTdee} kcal`,
+                      ref: 'FAO/WHO/UNU Expert Consultation (2004)',
+                      badgeBg: 'bg-blue-900/30',
+                      badgeColor: 'text-blue-400',
+                      note: 'Total 24-hour maintenance energy expenditure'
+                    },
+                    {
+                      num: 4,
+                      id: 'lbm',
+                      name: 'Lean Body Mass (LBM)',
+                      result: `${curLbm.lbmKg}`,
+                      unit: `kg (${curLbm.pct}%)`,
+                      formula: sex === 'male' ? '0.407×W + 0.267×H - 19.2' : '0.252×W + 0.473×H - 48.3',
+                      calc: `Boer validated equation = ${curLbm.lbmKg} kg`,
+                      ref: 'Boer P. Am J Physiol (1984)',
+                      badgeBg: 'bg-emerald-900/30',
+                      badgeColor: 'text-emerald-400',
+                      note: 'Metabolically active muscle, bone & organ mass'
+                    },
+                    {
+                      num: 5,
+                      id: 'fatmass',
+                      name: 'Estimated Fat Mass',
+                      result: `${curFm.fmKg}`,
+                      unit: `kg (${curFm.pct}%)`,
+                      formula: 'Total Weight - Lean Body Mass',
+                      calc: `${weight} kg - ${curLbm.lbmKg} kg = ${curFm.fmKg} kg`,
+                      ref: 'Forbes GB. Human Body Composition (1987)',
+                      badgeBg: 'bg-amber-900/30',
+                      badgeColor: 'text-amber-400',
+                      note: 'Total adipose tissue energy reserve'
+                    },
+                    {
+                      num: 6,
+                      id: 'bodyfat',
+                      name: 'Body-Fat Percentage',
+                      result: `${curBf}%`,
+                      unit: 'Composition',
+                      formula: '(1.20×BMI) + (0.23×Age) - (10.8×Sex) - 5.4',
+                      calc: `Deurenberg equation = ${curBf}% fat`,
+                      ref: 'Deurenberg P et al. Br J Nutr (1991)',
+                      badgeBg: 'bg-rose-900/30',
+                      badgeColor: 'text-rose-400',
+                      note: 'Relative adipose tissue vs lean mass'
+                    },
+                    {
+                      num: 7,
+                      id: 'refweight',
+                      name: 'Ideal Reference Weight',
+                      result: `${curRefW.minW}–${curRefW.maxW}`,
+                      unit: 'kg (WHO)',
+                      formula: '18.5×(H/100)² to 24.9×(H/100)²',
+                      calc: `18.5 to 24.9 BMI range = ${curRefW.minW}–${curRefW.maxW} kg`,
+                      ref: 'World Health Organization (WHO 2000)',
+                      badgeBg: weight > curRefW.maxW ? 'bg-red-900/30' : 'bg-emerald-900/30',
+                      badgeColor: weight > curRefW.maxW ? 'text-red-400' : 'text-emerald-400',
+                      note: weight > curRefW.maxW ? `+${(weight - curRefW.maxW).toFixed(1)} kg over max ceiling` : 'Optimal healthy normal range'
+                    },
+                    {
+                      num: 8,
+                      id: 'whtr',
+                      name: 'Waist-to-Height Ratio (WHtR)',
+                      result: '< 0.50',
+                      unit: `Target ≤ ${maxHealthyWaist}cm`,
+                      formula: 'Waist Circumference / Height',
+                      calc: `Max healthy waist = ${height}cm × 0.5 = ${maxHealthyWaist} cm`,
+                      ref: 'Ashwell M et al. Obes Rev (2012)',
+                      badgeBg: 'bg-purple-900/30',
+                      badgeColor: 'text-purple-400',
+                      note: 'Cardiometabolic & visceral fat risk threshold'
+                    },
+                    {
+                      num: 9,
+                      id: 'protein',
+                      name: 'Daily Protein Requirement',
+                      result: `${curProt.grams}`,
+                      unit: `g / day (${protFactor} g/kg)`,
+                      formula: 'Body Weight (kg) × Factor (1.6–2.2 g/kg)',
+                      calc: `${weight} kg × ${protFactor} g/kg = ${curProt.grams} g`,
+                      ref: 'Morton RW et al. Br J Sports Med (2018)',
+                      badgeBg: 'bg-red-900/30',
+                      badgeColor: 'text-red-400',
+                      note: 'Muscle protein synthesis & leucine saturation'
+                    },
+                    {
+                      num: 10,
+                      id: 'fiber',
+                      name: 'Daily Fiber Requirement',
+                      result: `${curFiber}`,
+                      unit: 'g / day',
+                      formula: '14 g per 1,000 kcal TDEE',
+                      calc: `14 g × (${curTdee} / 1000) = ${curFiber} g`,
+                      ref: 'National Academy of Medicine / IOM (2005)',
+                      badgeBg: 'bg-emerald-900/30',
+                      badgeColor: 'text-emerald-400',
+                      note: 'Gut microbiome & glycemic blunting'
+                    },
+                    {
+                      num: 11,
+                      id: 'calories',
+                      name: 'Daily Calorie Goal',
+                      result: `${curCalGoal.target}`,
+                      unit: `kcal / day (${curCalGoal.adj >= 0 ? '+' : ''}${curCalGoal.adj})`,
+                      formula: 'TDEE ± Goal Deficit / Surplus',
+                      calc: `${curTdee} kcal ${curCalGoal.adj >= 0 ? '+' : ''}${curCalGoal.adj} kcal = ${curCalGoal.target} kcal`,
+                      ref: 'Hall KD et al. The Lancet (2011)',
+                      badgeBg: 'bg-amber-900/30',
+                      badgeColor: 'text-amber-400',
+                      note: 'Target energy intake with safety floors'
+                    },
+                    {
+                      num: 12,
+                      id: 'macros',
+                      name: 'Macronutrient Planner',
+                      result: `${curMacros.pG}P • ${curMacros.cG}C • ${curMacros.fG}F`,
+                      unit: 'grams / day',
+                      formula: 'Protein (4 kcal/g) + Carbs (4 kcal/g) + Fat (9 kcal/g)',
+                      calc: `P: ${curMacros.pG}g • C: ${curMacros.cG}g • F: ${curMacros.fG}g`,
+                      ref: 'ACSM / Thomas DT et al. Med Sci Sports (2016)',
+                      badgeBg: 'bg-blue-900/30',
+                      badgeColor: 'text-blue-400',
+                      note: 'Sports nutrition macronutrient distribution'
+                    }
+                  ];
+
+                  return (
+                    <div className="space-y-4 animate-fade-in">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-fm-border pb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-red-500 uppercase tracking-wider">Clinical Evidence Engine</span>
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-900/30 text-red-400 border border-red-500/30">
+                              12 / 12 Formulas Live
+                            </span>
+                          </div>
+                          <h2 className="text-xl font-black text-fm-text">12 Scientifically Documented Formulas & Separate Results</h2>
+                          <p className="text-xs text-fm-muted mt-0.5">
+                            Individual clinical results calculated for {weight} kg body weight, {height} cm height, and {age} years.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {all12Formulas.map(item => (
+                          <div 
+                            key={item.id}
+                            onClick={() => setActiveTab(item.id)}
+                            className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-fm-border hover:border-red-500/50 transition-all cursor-pointer shadow-xs space-y-2 group"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black uppercase text-fm-muted">
+                                Tool {item.num}
+                              </span>
+                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${item.badgeBg} ${item.badgeColor} border border-current/20`}>
+                                {item.unit}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-xs font-bold text-fm-text group-hover:text-red-400 transition-colors">
+                                {item.name}
+                              </h4>
+                              <div className="text-2xl font-black text-fm-text mt-0.5">
+                                {item.result}
+                              </div>
+                            </div>
+
+                            <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border text-[10px] font-mono text-fm-muted space-y-0.5">
+                              <div><span className="text-fm-text font-semibold">Formula:</span> {item.formula}</div>
+                              <div className="text-emerald-400">↳ {item.calc}</div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] text-fm-muted pt-1 border-t border-fm-border/50">
+                              <span className="truncate max-w-[200px]" title={item.ref}>📚 {item.ref}</span>
+                              <span className="text-red-400 font-extrabold group-hover:translate-x-0.5 transition-transform">
+                                Detail ➔
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Hero Quick-Jump Banner for Automatic Daily Nutrition by Weight */}
                 {activeTab !== 'nutrition_auto' && (
                   <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white flex items-center justify-between shadow-sm">
