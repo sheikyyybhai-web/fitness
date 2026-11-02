@@ -218,31 +218,51 @@
     const Icon = ({ name, className = "w-5 h-5", ...props }) => {
       const icons = {
         logo: (
-          <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} {...props}>
+          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} {...props}>
             <defs>
-              <linearGradient id="fmShieldGrad" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#EF4444"/>
-                <stop offset="55%" stopColor="#DC2626"/>
+              <linearGradient id="fmObsidianBg" x1="4" y1="2" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#18181B"/>
+                <stop offset="50%" stopColor="#0E0E10"/>
+                <stop offset="100%" stopColor="#050506"/>
+              </linearGradient>
+              <linearGradient id="fmTitaniumRim" x1="4" y1="2" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#E4E4E7"/>
+                <stop offset="25%" stopColor="#A7ADA8"/>
+                <stop offset="60%" stopColor="#52525B"/>
+                <stop offset="100%" stopColor="#27272A"/>
+              </linearGradient>
+              <linearGradient id="fmSteelGrad" x1="10" y1="10" x2="26" y2="36" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#FFFFFF"/>
+                <stop offset="60%" stopColor="#D4D4D8"/>
+                <stop offset="100%" stopColor="#A1A1AA"/>
+              </linearGradient>
+              <linearGradient id="fmCrimsonEnergy" x1="20" y1="12" x2="38" y2="36" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stopColor="#FF453A"/>
+                <stop offset="50%" stopColor="#E11D32"/>
+                <stop offset="80%" stopColor="#DC2626"/>
                 <stop offset="100%" stopColor="#991B1B"/>
               </linearGradient>
-              <linearGradient id="fmCoreGrad" x1="6" y1="6" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#FFFFFF"/>
-                <stop offset="100%" stopColor="#FEE2E2"/>
-              </linearGradient>
-              <filter id="fmGlow" x="-10%" y="-10%" width="120%" height="120%">
-                <feDropShadow dx="0" dy="2" stdDeviation="1.5" floodColor="#7F1D1D" floodOpacity="0.4"/>
+              <filter id="fmCoreGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#E11D32" floodOpacity="0.5"/>
               </filter>
             </defs>
-            {/* Hexagonal Athletic Crest */}
-            <polygon points="18,2 32,7 32,22 18,34 4,22 4,7" fill="url(#fmShieldGrad)" filter="url(#fmGlow)"/>
-            <polygon points="18,3.6 30.5,8 30.5,21.2 18,32 5.5,21.2 5.5,8" stroke="#F87171" strokeWidth="0.8" strokeOpacity="0.6" fill="none"/>
-            {/* Interlocking Monogram F and M with Kinetic Pulse */}
-            <path d="M 10 10 L 10 26 M 10 10 L 18 10 M 10 17 L 16 17" stroke="url(#fmCoreGrad)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M 17 26 L 20 15 L 24 21 L 28 12 L 28 26" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-            {/* Precision Calibrated Metrics Core & Nodes */}
-            <circle cx="28" cy="12" r="2.2" fill="#FEE2E2" stroke="#DC2626" strokeWidth="0.8"/>
-            <circle cx="10" cy="10" r="1.6" fill="#FEE2E2"/>
-            <polygon points="18,17 19.5,18.5 18,20 16.5,18.5" fill="#FEE2E2"/>
+            {/* Obsidian Armor Shield Plate */}
+            <polygon points="24,2 43,9.5 43,28.5 24,46 5,28.5 5,9.5" fill="url(#fmObsidianBg)"/>
+            {/* Titanium Chiseled Bevel Perimeter */}
+            <polygon points="24,2 43,9.5 43,28.5 24,46 5,28.5 5,9.5" stroke="url(#fmTitaniumRim)" strokeWidth="1.8" strokeLinejoin="round"/>
+            {/* Inner Precision Calibrated Recess */}
+            <polygon points="24,5 40,11.2 40,27 24,42.5 8,27 8,11.2" stroke="#2D2D30" strokeWidth="0.8" fill="none"/>
+            {/* Precision Metric Caliper Marks */}
+            <line x1="24" y1="5.5" x2="24" y2="8" stroke="#A7ADA8" strokeWidth="1.2" strokeLinecap="round"/>
+            <line x1="8" y1="19" x2="10.5" y2="19" stroke="#A7ADA8" strokeWidth="1" strokeLinecap="round"/>
+            <line x1="37.5" y1="19" x2="40" y2="19" stroke="#A7ADA8" strokeWidth="1" strokeLinecap="round"/>
+            <line x1="24" y1="40" x2="24" y2="42.5" stroke="#A7ADA8" strokeWidth="1.2" strokeLinecap="round"/>
+            {/* Dynamic Athletic Monogram: Kinetic F & M Interlock */}
+            <path d="M 12 12.5 H 25.5 L 23.5 16 H 16 V 21.5 H 22 L 20 25 H 16 V 35.5 H 12 Z" fill="url(#fmSteelGrad)"/>
+            <path d="M 23 35.5 L 26.8 19 L 30 26.5 L 34.5 12.5 H 38.5 L 38.5 35.5 H 35 L 35 20 L 31.2 31.5 H 28.8 L 25.2 24 L 21 35.5 Z" fill="url(#fmCrimsonEnergy)" filter="url(#fmCoreGlow)"/>
+            {/* Radiant Crimson Diamond Vertex (Heart-Rate Peak Core) */}
+            <polygon points="34.5,12.5 37,9.5 34.5,6.5 32,9.5" fill="#FF453A" stroke="#FFFFFF" strokeWidth="0.75"/>
+            <circle cx="34.5" cy="9.5" r="1" fill="#FFFFFF"/>
           </svg>
         ),
         dashboard: (
@@ -10386,26 +10406,52 @@
         localStorage.setItem('fm_visit_count', String(nextV));
       }, []);
 
-      // User Logins & Sessions Tracking State
+      // User & Admin Active Sessions Tracking State
       const [userSessions, setUserSessions] = useState(() => {
+        const defaultAdminSession = {
+          id: 'sess-adm-master',
+          name: 'Platform Admin',
+          email: 'admin@fitnessmetric.io',
+          role: 'admin',
+          goal: 'maintenance',
+          weightKg: 78.0,
+          heightCm: 180,
+          loginTime: new Date(Date.now() - 1000 * 60 * 18).toLocaleString(),
+          device: 'Master Gateway (Windows x64 / Secure Localhost)',
+          status: 'Active (Master Clearance)',
+          clearance: 'Level 4 - Master Clearance',
+          token: 'FM-SEC-ADM-9941',
+          securityIp: '127.0.0.1 (Root Terminal)'
+        };
+
+        const defaultUserSession = {
+          id: 'sess-usr-1',
+          name: 'User',
+          email: 'user@fitnessmetric.io',
+          role: 'user',
+          goal: 'fat_loss',
+          weightKg: 74.5,
+          heightCm: 178,
+          loginTime: new Date(Date.now() - 1000 * 60 * 45).toLocaleString(),
+          device: 'Desktop Browser (Chrome / Windows)',
+          status: 'Active',
+          clearance: 'Level 1 - Member',
+          token: 'FM-USR-TOK-4412',
+          securityIp: '192.168.1.104 (Member Client)'
+        };
+
         try {
           const saved = localStorage.getItem('fm_user_sessions');
-          if (saved) return JSON.parse(saved);
-        } catch (err) {}
-        return [
-          {
-            id: 'sess-usr-1',
-            name: 'User',
-            email: 'user@fitnessmetric.io',
-            role: 'user',
-            goal: 'fat_loss',
-            weightKg: 74.5,
-            heightCm: 178,
-            loginTime: new Date(Date.now() - 1000 * 60 * 45).toLocaleString(),
-            device: 'Desktop Browser (Chrome / Windows)',
-            status: 'Active'
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const hasAdmin = parsed.some(s => s.role === 'admin' || s.email === 'admin@fitnessmetric.io');
+              if (hasAdmin) return parsed;
+              return [defaultAdminSession, ...parsed];
+            }
           }
-        ];
+        } catch (err) {}
+        return [defaultAdminSession, defaultUserSession];
       });
 
       useEffect(() => {
@@ -10579,7 +10625,7 @@
 
           // Record Administrator Login Session
           const adminSession = {
-            id: `sess-${Date.now()}`,
+            id: `sess-adm-${Date.now()}`,
             name: 'Platform Admin',
             email: 'admin@fitnessmetric.io',
             role: 'admin',
@@ -10587,8 +10633,11 @@
             weightKg: 78.0,
             heightCm: 180,
             loginTime: new Date().toLocaleString(),
-            device: navigator.userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop Browser (Windows)',
-            status: 'Active'
+            device: navigator.userAgent.includes('Mobile') ? 'Mobile Terminal (Master Gateway)' : 'Secure Terminal (Master Gateway / Windows x64)',
+            status: 'Active (Master Clearance)',
+            clearance: 'Level 4 - Master Clearance',
+            token: `FM-SEC-ADM-${Math.floor(1000 + Math.random() * 9000)}`,
+            securityIp: '127.0.0.1 (Protected Root Localhost)'
           };
           setUserSessions(prev => [adminSession, ...prev.filter(s => s.email !== 'admin@fitnessmetric.io')]);
 
@@ -10831,8 +10880,15 @@
             <div className="p-4 border-t border-fm-border bg-fm-surfaceSubtle space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-fm-muted">Session:</span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${currentUser.role === 'admin' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
-                  {currentUser.role === 'admin' ? '🛡️ Admin' : '👤 User'}
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase flex items-center gap-1 ${currentUser.role === 'admin' ? 'bg-red-600 text-white shadow-xs' : 'bg-blue-600 text-white'}`}>
+                  {currentUser.role === 'admin' ? (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>🛡️ Admin Master</span>
+                    </>
+                  ) : (
+                    <span>👤 User</span>
+                  )}
                 </span>
               </div>
 
@@ -11306,7 +11362,23 @@
                     foodLogs={foodLogs}
                     weightHistory={weightHistory}
                     supabaseConfig={supabaseConfig}
-                    onClearSessions={() => setUserSessions([])}
+                    onClearSessions={() => setUserSessions([
+                    {
+                      id: `sess-adm-${Date.now()}`,
+                      name: 'Platform Admin',
+                      email: 'admin@fitnessmetric.io',
+                      role: 'admin',
+                      goal: 'maintenance',
+                      weightKg: 78.0,
+                      heightCm: 180,
+                      loginTime: new Date().toLocaleString(),
+                      device: 'Master Gateway (Windows x64 / Secure Localhost)',
+                      status: 'Active (Master Clearance)',
+                      clearance: 'Level 4 - Master Clearance',
+                      token: 'FM-SEC-ADM-9941',
+                      securityIp: '127.0.0.1 (Root Terminal)'
+                    }
+                  ])}
                     onSaveFood={(food) => {
                       setFoods(prev => {
                         const idx = prev.findIndex(f => f.id === food.id);
@@ -15189,7 +15261,7 @@
                 className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${adminTab === 'users' ? 'bg-red-600 text-white shadow-sm' : 'text-fm-text hover:bg-stone-200'}`}
               >
                 <span>👥</span>
-                <span>User Logins ({userSessions.length})</span>
+                <span>Sessions & Logins ({userSessions.length})</span>
               </button>
               <button 
                 onClick={() => setAdminTab('foods')}
@@ -15270,11 +15342,13 @@
                   {/* Metric 1 */}
                   <div className="p-4 rounded-xl bg-fm-card border border-fm-border shadow-xs space-y-1">
                     <div className="flex items-center justify-between text-fm-muted text-xs">
-                      <span className="font-bold">User Sessions</span>
+                      <span className="font-bold">Active Sessions</span>
                       <span>👥</span>
                     </div>
                     <span className="text-2xl font-black text-fm-text block">{userSessions.length}</span>
-                    <span className="text-[10px] text-emerald-700 font-bold block">● Logged authentications</span>
+                    <span className="text-[10px] text-emerald-500 font-bold block">
+                      ● {userSessions.filter(s => s.role === 'admin').length} Admin • {userSessions.filter(s => s.role !== 'admin').length} Member
+                    </span>
                   </div>
 
                   {/* Metric 2 */}
@@ -15420,43 +15494,103 @@
                   <div>
                     <h3 className="text-base font-extrabold text-fm-text flex items-center gap-2">
                       <span>👥</span>
-                      <span>User Logins & Active Sessions</span>
+                      <span>User Logins & Active Sessions Monitor</span>
                     </h3>
                     <p className="text-xs text-fm-muted">
-                      Inspect which users logged into the platform, their authentication timestamps, biometrics, and login roles.
+                      Inspect active member logins, administrator master sessions, device biometrics, clearance levels, and security tokens.
                     </p>
                   </div>
                   {userSessions.length > 0 && onClearSessions && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (window.confirm('Are you sure you want to clear session history?')) {
+                        if (window.confirm('Clear member session logs and re-anchor Master Administrator session?')) {
                           onClearSessions();
                         }
                       }}
-                      className="px-3 py-1.5 text-xs font-bold text-red-700 border border-red-200 bg-red-50 hover:bg-red-100 rounded-lg transition-all"
+                      className="px-3 py-1.5 text-xs font-bold text-red-500 border border-red-500/30 bg-red-950/20 hover:bg-red-950/40 rounded-lg transition-all"
                     >
-                      Clear Session History
+                      Reset Member Sessions
                     </button>
                   )}
                 </div>
+
+                {/* Master Administrator Active Session Highlight Card */}
+                {(() => {
+                  const adminSess = userSessions.find(s => s.role === 'admin') || {
+                    name: 'Platform Admin',
+                    email: 'admin@fitnessmetric.io',
+                    role: 'admin',
+                    loginTime: 'Active Master Session',
+                    device: 'Secure Terminal (Master Gateway / Windows)',
+                    status: 'Active (Master Clearance)',
+                    clearance: 'Level 4 - Master Clearance',
+                    token: 'FM-SEC-ADM-9941',
+                    securityIp: '127.0.0.1 (Root Terminal)'
+                  };
+                  return (
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-[var(--bg-elevated)] via-[var(--bg-card)] to-[var(--bg-elevated)] border-2 border-[var(--brand-primary)]/40 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 right-0 px-3 py-1 bg-[var(--brand-primary)] text-white text-[10px] font-black uppercase tracking-wider rounded-bl-xl shadow-xs flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>ADMIN MASTER SESSION</span>
+                      </div>
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-[var(--brand-primary)]/20 border border-[var(--brand-primary)]/40 text-[var(--brand-primary)] flex items-center justify-center text-2xl flex-shrink-0 shadow-inner">
+                            🛡️
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-extrabold text-sm sm:text-base text-fm-text">{adminSess.name}</h4>
+                              <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                Master Clearance
+                              </span>
+                            </div>
+                            <p className="text-xs font-mono text-[var(--brand-titanium)]">{adminSess.email} • Token: <span className="text-fm-text font-bold">{adminSess.token || 'FM-SEC-ADM-9941'}</span></p>
+                            <p className="text-[11px] text-fm-muted mt-0.5">
+                              {adminSess.device || 'Master Gateway'} • Bound to: <span className="font-mono text-xs">{adminSess.securityIp || '127.0.0.1'}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 border-t md:border-t-0 pt-2 md:pt-0 border-fm-border">
+                          <div className="bg-[var(--bg-secondary)] px-3 py-2 rounded-lg border border-fm-border text-center min-w-[110px]">
+                            <span className="text-[10px] font-bold text-fm-muted block uppercase">Session State</span>
+                            <span className="text-xs font-extrabold text-emerald-400 flex items-center justify-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                              Active
+                            </span>
+                          </div>
+                          <div className="bg-[var(--bg-secondary)] px-3 py-2 rounded-lg border border-fm-border text-center min-w-[110px]">
+                            <span className="text-[10px] font-bold text-fm-muted block uppercase">Clearance</span>
+                            <span className="text-xs font-extrabold text-[var(--brand-primary)]">Level 4 (Root)</span>
+                          </div>
+                          <div className="bg-[var(--bg-secondary)] px-3 py-2 rounded-lg border border-fm-border text-center min-w-[110px]">
+                            <span className="text-[10px] font-bold text-fm-muted block uppercase">Takeover Guard</span>
+                            <span className="text-xs font-extrabold text-emerald-400">Lockout Armed</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Filter & Search Bar */}
                 <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-fm-border">
                   <div className="flex-1">
                     <input 
                       type="text" 
-                      placeholder="Search by user name or email..."
+                      placeholder="Search by user or admin name/email..."
                       value={userSearch}
                       onChange={e => setUserSearch(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-fm-border bg-fm-surfaceSubtle font-medium"
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-fm-border bg-fm-surfaceSubtle font-medium text-fm-text"
                     />
                   </div>
                   <div className="flex gap-1">
                     {[
                       { id: 'all', label: `All (${userSessions.length})` },
-                      { id: 'user', label: '👤 Users Only' },
-                      { id: 'admin', label: '🛡️ Admins Only' }
+                      { id: 'user', label: `👤 Members (${userSessions.filter(s => s.role !== 'admin').length})` },
+                      { id: 'admin', label: `🛡️ Admin (${userSessions.filter(s => s.role === 'admin').length})` }
                     ].map(btn => (
                       <button
                         key={btn.id}
@@ -15465,7 +15599,7 @@
                         className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all ${
                           roleFilter === btn.id 
                             ? 'bg-red-600 text-white border-red-600 shadow-xs' 
-                            : 'bg-white border-fm-border text-fm-text hover:bg-stone-50'
+                            : 'bg-fm-card border-fm-border text-fm-text hover:bg-fm-surfaceSubtle'
                         }`}
                       >
                         {btn.label}
@@ -15479,11 +15613,11 @@
                   <table className="w-full text-xs text-left">
                     <thead className="bg-fm-surfaceSubtle border-b border-fm-border text-fm-muted font-bold">
                       <tr>
-                        <th className="p-3">User / Member</th>
-                        <th className="p-3">Role</th>
+                        <th className="p-3">Session Identity</th>
+                        <th className="p-3">Role & Clearance</th>
                         <th className="p-3">Login Timestamp</th>
-                        <th className="p-3">Biometrics & Goal</th>
-                        <th className="p-3">Client Device</th>
+                        <th className="p-3">Biometrics / Scope</th>
+                        <th className="p-3">Client Device / IP Binding</th>
                         <th className="p-3 text-right">Session Status</th>
                       </tr>
                     </thead>
@@ -15491,7 +15625,7 @@
                       {filteredSessions.length === 0 ? (
                         <tr>
                           <td colSpan="6" className="p-6 text-center text-fm-muted">
-                            No user login sessions found matching your filters.
+                            No login sessions found matching your filters.
                           </td>
                         </tr>
                       ) : (
@@ -15499,37 +15633,69 @@
                           <tr key={sess.id} className="hover:bg-fm-surfaceSubtle transition-colors">
                             <td className="p-3">
                               <div className="flex items-center gap-2.5">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${
-                                  sess.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs flex-shrink-0 ${
+                                  sess.role === 'admin' 
+                                    ? 'bg-red-900/30 border border-red-500/40 text-red-400' 
+                                    : 'bg-blue-900/30 border border-blue-500/30 text-blue-400'
                                 }`}>
                                   {sess.role === 'admin' ? '🛡️' : (sess.name ? sess.name.charAt(0) : 'U')}
                                 </div>
                                 <div>
-                                  <span className="font-extrabold text-fm-text block">{sess.name}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-fm-text block">{sess.name}</span>
+                                    {sess.role === 'admin' && (
+                                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-red-600 text-white shadow-xs">
+                                        MASTER
+                                      </span>
+                                    )}
+                                  </div>
                                   <span className="text-[10px] text-fm-muted font-mono">{sess.email}</span>
                                 </div>
                               </div>
                             </td>
                             <td className="p-3">
                               <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                                sess.role === 'admin' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'
+                                sess.role === 'admin' ? 'bg-red-600 text-white shadow-xs' : 'bg-blue-600 text-white'
                               }`}>
-                                {sess.role === 'admin' ? '🛡️ Admin' : '👤 User'}
+                                {sess.role === 'admin' ? '🛡️ Admin Master' : '👤 User Member'}
                               </span>
+                              {sess.clearance && (
+                                <span className="text-[9px] block text-fm-muted mt-0.5 font-semibold">
+                                  {sess.clearance}
+                                </span>
+                              )}
                             </td>
-                            <td className="p-3 font-mono text-[11px] text-stone-700">
-                              {sess.loginTime}
+                            <td className="p-3 font-mono text-[11px] text-fm-text">
+                              <div>{sess.loginTime}</div>
+                              {sess.role === 'admin' && (
+                                <span className="text-[9px] text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Master Active
+                                </span>
+                              )}
                             </td>
                             <td className="p-3 text-[11px]">
                               <span className="font-bold text-fm-text">{sess.weightKg ? `${sess.weightKg} kg` : '74.5 kg'}</span>
                               <span className="text-fm-muted ml-1">• {sess.goal || 'fat_loss'}</span>
+                              {sess.role === 'admin' ? (
+                                <span className="block text-[10px] text-red-400 font-semibold">Root Clearance Scope</span>
+                              ) : (
+                                <span className="block text-[10px] text-fm-muted">Member Scope</span>
+                              )}
                             </td>
-                            <td className="p-3 text-fm-muted text-[11px]">
-                              {sess.device || 'Desktop Browser'}
+                            <td className="p-3 text-[11px]">
+                              <span className="text-fm-text block font-medium">{sess.device || 'Desktop Browser'}</span>
+                              {sess.securityIp && (
+                                <span className="font-mono text-[10px] text-fm-muted block">{sess.securityIp}</span>
+                              )}
                             </td>
                             <td className="p-3 text-right">
-                              <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                ● {sess.status || 'Active'}
+                              <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5 ${
+                                sess.role === 'admin'
+                                  ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 shadow-xs'
+                                  : 'text-emerald-500 bg-emerald-950/30 border border-emerald-500/30'
+                              }`}>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>{sess.status || 'Active'}</span>
                               </span>
                             </td>
                           </tr>
@@ -15540,18 +15706,20 @@
                 </div>
 
                 {/* Security Isolation Notice */}
-                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 leading-relaxed flex items-center gap-3">
+                <div className="p-3.5 rounded-xl bg-blue-950/30 border border-blue-500/30 text-xs text-blue-200 leading-relaxed flex items-center gap-3">
                   <span className="text-xl">ℹ️</span>
                   <div>
-                    <span className="font-bold block">Strict User Isolation Notice:</span>
+                    <span className="font-bold block text-blue-100">Strict User Isolation Notice:</span>
                     <span>
                       Standard members can only access their personal dashboard and calculators. Standard members cannot access this user session monitor or log in to admin.
                     </span>
                   </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              {/* Login Audit Trail Stream */}
+          {/* Login Audit Trail Stream */}
               <div className="bg-fm-card p-5 rounded-2xl border border-fm-border shadow-xs space-y-3">
                 <h4 className="text-xs font-black uppercase tracking-wider text-fm-text flex items-center justify-between">
                   <span>🔐 Recent Authentication & Security Log Stream</span>
