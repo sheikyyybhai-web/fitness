@@ -10139,6 +10139,32 @@
       const [adminGatewayPass, setAdminGatewayPass] = useState('');
       const [adminGatewayError, setAdminGatewayError] = useState('');
       const [authModalTab, setAuthModalTab] = useState('user');
+      const [adminFailedAttempts, setAdminFailedAttempts] = useState(() => {
+        return parseInt(localStorage.getItem('fm_admin_failed_attempts') || '0', 10);
+      });
+      const [adminLockoutUntil, setAdminLockoutUntil] = useState(() => {
+        return parseInt(localStorage.getItem('fm_admin_lockout_until') || '0', 10);
+      });
+      const [lockoutSecondsLeft, setLockoutSecondsLeft] = useState(0);
+
+      // Real-time Anti-Takeover Lockout Countdown
+      useEffect(() => {
+        if (adminLockoutUntil > Date.now()) {
+          const updateRemaining = () => {
+            const left = Math.max(0, Math.ceil((adminLockoutUntil - Date.now()) / 1000));
+            setLockoutSecondsLeft(left);
+            if (left === 0) {
+              setAdminLockoutUntil(0);
+              localStorage.removeItem('fm_admin_lockout_until');
+            }
+          };
+          updateRemaining();
+          const timer = setInterval(updateRemaining, 1000);
+          return () => clearInterval(timer);
+        } else {
+          setLockoutSecondsLeft(0);
+        }
+      }, [adminLockoutUntil]);
 
       // Supabase credentials configuration state
       const [supabaseConfig, setSupabaseConfig] = useState(() => {
@@ -10331,20 +10357,52 @@
       const handleAdminGatewaySubmit = (e) => {
         e.preventDefault();
         setAdminGatewayError('');
+
+        // Anti-Takeover Security Shield Check
+        if (adminLockoutUntil > Date.now()) {
+          const seconds = Math.ceil((adminLockoutUntil - Date.now()) / 1000);
+          setAdminGatewayError(`ANTI-TAKEOVER SYSTEM ACTIVE: Terminal locked down. Try again in ${seconds}s.`);
+          return;
+        }
+
         const res = handleAdminLogin(adminGatewayPass);
         if (!res || !res.success) {
-          setAdminGatewayError('Access Denied: Invalid administrator security passkey.');
+          const newFails = adminFailedAttempts + 1;
+          setAdminFailedAttempts(newFails);
+          localStorage.setItem('fm_admin_failed_attempts', String(newFails));
+
+          if (newFails >= 3) {
+            const lockDuration = newFails >= 5 ? 300000 : 60000; // 60s for 3 fails, 5m for 5+ fails
+            const lockUntil = Date.now() + lockDuration;
+            setAdminLockoutUntil(lockUntil);
+            localStorage.setItem('fm_admin_lockout_until', String(lockUntil));
+            logAudit('SECURITY_ALERT', 'Auth', `ANTI-TAKEOVER LOCKDOWN: ${newFails} failed administrative passkey attempts.`);
+            setAdminGatewayError(`🚨 ANTI-TAKEOVER SYSTEM ACTIVE: Multiple failed passkey attempts. Terminal frozen for ${lockDuration / 1000}s to prevent unauthorized takeover.`);
+          } else {
+            logAudit('SECURITY_ALERT', 'Auth', `Failed administrator passkey attempt (${newFails}/3).`);
+            setAdminGatewayError(`Access Denied: Invalid administrator security passkey. (${3 - newFails} attempts remaining before anti-takeover lockdown)`);
+          }
+        } else {
+          // Reset security tracker on successful master authentication
+          setAdminFailedAttempts(0);
+          setAdminLockoutUntil(0);
+          localStorage.removeItem('fm_admin_failed_attempts');
+          localStorage.removeItem('fm_admin_lockout_until');
+          setAdminGatewayPass('');
         }
       };
 
       const handleAdminLogin = (password) => {
-        if (password === 'admin' || password === 'admin123' || password === '1234') {
+        const MASTER_ADMIN_PASS = 'Sheikyyy@2007';
+        const MASTER_RECOVERY_KEY = 'FM-SECURE-TAKEOVER-GUARD-2026';
+
+        if (password === MASTER_ADMIN_PASS || password === MASTER_RECOVERY_KEY) {
           setCurrentUser(DEFAULT_ADMIN);
-          logAudit('ADMIN_LOGIN', 'Auth', 'Administrator authenticated successfully');
+          logAudit('ADMIN_LOGIN', 'Auth', 'Master Administrator authenticated with secure master credentials.');
           navigateTo('admin');
           return { success: true };
         } else {
-          return { success: false, error: 'Incorrect Admin password. (Hint: admin)' };
+          return { success: false, error: 'Access Denied: Invalid administrator security passkey.' };
         }
       };
 
@@ -10947,32 +11005,66 @@
                         />
                       </div>
 
-                      <div>
-                        <label className="text-xs font-bold text-fm-text block mb-1">Security Passkey</label>
-                        <input
-                          type="password"
-                          required
-                          autoFocus
-                          value={adminGatewayPass}
-                          onChange={e => { setAdminGatewayPass(e.target.value); setAdminGatewayError(''); }}
-                          className="w-full px-3 py-2 text-sm rounded-lg border border-fm-border bg-fm-surfaceSubtle text-fm-text font-mono focus:outline-none focus:border-red-500"
-                          placeholder="Enter master passkey"
-                        />
-                        {adminGatewayError && (
-                          <p className="text-xs text-red-600 font-bold mt-1.5 flex items-center gap-1">
-                            <span>⛔</span>
-                            <span>{adminGatewayError}</span>
+                      {/* Anti-Takeover Lockdown Warning Display */}
+                      {lockoutSecondsLeft > 0 ? (
+                        <div className="p-4 rounded-xl bg-red-950 text-white border-2 border-red-500 shadow-xl space-y-2 text-center animate-pulse">
+                          <div className="text-3xl">🚨</div>
+                          <h4 className="font-black text-sm uppercase tracking-wider text-red-300">
+                            Anti-Takeover Lockdown Active
+                          </h4>
+                          <p className="text-xs text-red-200 leading-relaxed">
+                            Terminal frozen against brute-force intrusion. Unauthorized takeover prevented.
                           </p>
-                        )}
+                          <div className="text-xl font-black font-mono text-amber-300 bg-black/50 py-1.5 px-4 rounded-lg inline-block border border-amber-400/30">
+                            Locked for: {lockoutSecondsLeft}s
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="text-xs font-bold text-fm-text block mb-1">Security Passkey</label>
+                          <input
+                            type="password"
+                            required
+                            autoFocus
+                            disabled={lockoutSecondsLeft > 0}
+                            value={adminGatewayPass}
+                            onChange={e => { setAdminGatewayPass(e.target.value); setAdminGatewayError(''); }}
+                            className="w-full px-3 py-2 text-sm rounded-lg border border-fm-border bg-fm-surfaceSubtle text-fm-text font-mono focus:outline-none focus:border-red-500"
+                            placeholder="Enter master security passkey"
+                          />
+                          {adminGatewayError && (
+                            <p className="text-xs text-red-600 font-bold mt-1.5 flex items-center gap-1">
+                              <span>⛔</span>
+                              <span>{adminGatewayError}</span>
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Security Status Badges */}
+                      <div className="p-3 rounded-xl bg-stone-100 border border-fm-border text-[11px] space-y-1">
+                        <div className="flex items-center justify-between font-semibold text-fm-muted">
+                          <span>Anti-Takeover Guard:</span>
+                          <span className="text-emerald-700 font-bold">✓ Active & Armed</span>
+                        </div>
+                        <div className="flex items-center justify-between font-semibold text-fm-muted">
+                          <span>Brute-Force Rate Limiter:</span>
+                          <span className="text-stone-700 font-mono font-bold">3 attempts max / cooldown</span>
+                        </div>
                       </div>
 
                       <div className="pt-2">
                         <button
                           type="submit"
-                          className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm shadow-md shadow-red-600/30 transition-all flex items-center justify-center gap-2"
+                          disabled={lockoutSecondsLeft > 0}
+                          className={`w-full py-2.5 px-4 rounded-xl text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+                            lockoutSecondsLeft > 0 
+                              ? 'bg-stone-400 cursor-not-allowed' 
+                              : 'bg-red-600 hover:bg-red-700 shadow-red-600/30'
+                          }`}
                         >
                           <span>🔑</span>
-                          <span>Authenticate as Admin</span>
+                          <span>{lockoutSecondsLeft > 0 ? `Locked (${lockoutSecondsLeft}s)` : 'Authenticate as Admin'}</span>
                         </button>
                       </div>
                     </form>
@@ -11694,6 +11786,7 @@
           {/* Calculator Tool Navigation Tabs */}
           <div className="flex overflow-x-auto gap-1.5 pb-2 border-b border-fm-border">
             {[
+              { id: 'nutrition_auto', label: '🥗 Daily Grams by Weight (Protein/Fiber/Macros)' },
               { id: 'bmi', label: '1. BMI' },
               { id: 'bmr', label: '2. BMR' },
               { id: 'tdee', label: '3. TDEE' },
@@ -11913,67 +12006,115 @@
                 <p className="text-[10px] text-fm-muted mt-2">Zero tape measurements required. Universal clinical calculation.</p>
               </div>
 
-              {/* DAILY PROTEIN INTAKE TARGET BASED ON BODY WEIGHT */}
-              <div className="pt-3 border-t-2 border-red-200 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-fm-text flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
-                    Protein Intake by Body Weight
-                  </label>
-                  <span className="text-[11px] font-extrabold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full border border-red-300">
-                    {Math.round(weight * protFactor)} g / day ({protFactor} g/kg)
-                  </span>
-                </div>
+              {/* AUTOMATIC DAILY NUTRITION TARGETS BASED ON YOUR BODY WEIGHT */}
+              <div className="pt-3 border-t-2 border-red-200 space-y-3">
+                {(() => {
+                  const curW = parseFloat(weight) || 0;
+                  const curBmr = Calculations.bmr(curW || 70, height || 178, age || 28, sex || 'male');
+                  const curTdee = Calculations.tdee(curBmr, activity || 'moderately_active');
+                  const pG = Math.round(curW * protFactor);
+                  const fiberG = Calculations.fiberReq(age, sex, curTdee);
+                  const fatG = Math.round(curW * 0.9);
+                  const carbG = Math.max(50, Math.round((curTdee - 400 - (pG * 4 + fatG * 9)) / 4));
+                  const waterL = (curW * 0.035).toFixed(1);
+                  const waterGlasses = Math.round(curW * 35 / 250);
 
-                {/* Quick Science-Backed Preset Pills */}
-                <div className="grid grid-cols-5 gap-1">
-                  {[
-                    { f: 0.8, l: '0.8g', sub: 'RDA' },
-                    { f: 1.2, l: '1.2g', sub: 'Cardio' },
-                    { f: 1.6, l: '1.6g', sub: 'Build' },
-                    { f: 2.0, l: '2.0g', sub: 'Hyper' },
-                    { f: 2.4, l: '2.4g', sub: 'Deficit' }
-                  ].map(item => (
-                    <button
-                      key={item.f}
-                      type="button"
-                      onClick={() => setProtFactor(item.f)}
-                      className={`p-1.5 rounded-xl text-center border transition-all ${
-                        Math.abs(protFactor - item.f) < 0.05 
-                          ? 'bg-red-600 text-white border-red-600 shadow-md ring-2 ring-red-400 font-black' 
-                          : 'bg-white border-stone-200 text-stone-700 hover:bg-red-50 text-xs'
-                      }`}
-                    >
-                      <span className="text-xs font-bold block">{item.l}</span>
-                      <span className={`text-[9px] block ${Math.abs(protFactor - item.f) < 0.05 ? 'text-red-100' : 'text-stone-400'}`}>{item.sub}</span>
-                    </button>
-                  ))}
-                </div>
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-fm-text flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
+                          <span>Daily Nutrition by Body Weight</span>
+                        </label>
+                        <span className="text-[10px] font-black text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full border border-red-300">
+                          {curW} kg Bodyweight
+                        </span>
+                      </div>
 
-                {/* Calculation breakdown */}
-                <div className="p-3 rounded-xl bg-red-50/80 border border-red-200 text-xs space-y-1.5">
-                  <div className="flex justify-between text-stone-700">
-                    <span>Body Weight:</span>
-                    <span className="font-extrabold text-stone-900">{weight} kg</span>
-                  </div>
-                  <div className="flex justify-between text-stone-700">
-                    <span>Weight-Based Intake Formula:</span>
-                    <span className="font-mono font-bold text-red-700">{weight} kg × {protFactor} g/kg = {Math.round(weight * protFactor)} g</span>
-                  </div>
-                  <div className="flex justify-between text-stone-700 pt-1.5 border-t border-red-200">
-                    <span>Per-Meal Distribution (4 meals):</span>
-                    <span className="font-bold text-stone-900">{Math.round((weight * protFactor) / 4)} g / meal (MPS Leucine ✓)</span>
-                  </div>
-                </div>
+                      {/* 4 Primary Nutrition Stat Cards */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {/* Protein */}
+                        <div className="p-2.5 rounded-xl bg-red-50 border border-red-200">
+                          <span className="text-[10px] font-bold text-red-700 block">🥩 Protein to Eat</span>
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <strong className="text-lg font-black text-red-600">{pG}g</strong>
+                            <span className="text-[10px] text-stone-600">({protFactor} g/kg)</span>
+                          </div>
+                          <span className="text-[9px] text-stone-500 block">~{Math.round(pG / 4)}g / meal (MPS Leucine ✓)</span>
+                        </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('protein')}
-                  className="w-full py-1.5 text-[11px] font-bold text-red-700 bg-red-100/60 hover:bg-red-100 rounded-lg border border-red-300 transition-smooth flex items-center justify-center gap-1"
-                >
-                  <span>Open Full Science-Backed Protein Tool (Tool 9)</span>
-                  <span>→</span>
-                </button>
+                        {/* Fiber */}
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                          <span className="text-[10px] font-bold text-emerald-800 block">🌾 Fiber to Eat</span>
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <strong className="text-lg font-black text-emerald-700">{fiberG}g</strong>
+                            <span className="text-[10px] text-stone-600">/ day</span>
+                          </div>
+                          <span className="text-[9px] text-stone-500 block">14g / 1000 kcal intake</span>
+                        </div>
+
+                        {/* Carbs */}
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                          <span className="text-[10px] font-bold text-amber-800 block">🍚 Carbs to Eat</span>
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <strong className="text-lg font-black text-amber-700">{carbG}g</strong>
+                            <span className="text-[10px] text-stone-600">/ day</span>
+                          </div>
+                          <span className="text-[9px] text-stone-500 block">Training Energy Glycogen</span>
+                        </div>
+
+                        {/* Water */}
+                        <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                          <span className="text-[10px] font-bold text-blue-800 block">💧 Water to Drink</span>
+                          <div className="flex items-baseline gap-1 mt-0.5">
+                            <strong className="text-lg font-black text-blue-600">{waterL}L</strong>
+                            <span className="text-[10px] text-stone-600">/ day</span>
+                          </div>
+                          <span className="text-[9px] text-stone-500 block">~{waterGlasses} glasses (250ml)</span>
+                        </div>
+                      </div>
+
+                      {/* Quick Protein Multiplier Presets */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-stone-600 block">Select Protein Target (g/kg):</span>
+                        <div className="grid grid-cols-5 gap-1">
+                          {[
+                            { f: 0.8, l: '0.8g', sub: 'RDA' },
+                            { f: 1.2, l: '1.2g', sub: 'Cardio' },
+                            { f: 1.6, l: '1.6g', sub: 'Morton 2018' },
+                            { f: 2.0, l: '2.0g', sub: 'Hyper' },
+                            { f: 2.4, l: '2.4g', sub: 'Deficit' }
+                          ].map(item => (
+                            <button
+                              key={item.f}
+                              type="button"
+                              onClick={() => setProtFactor(item.f)}
+                              className={`p-1 rounded-lg text-center border transition-all ${
+                                Math.abs(protFactor - item.f) < 0.05 
+                                  ? 'bg-red-600 text-white border-red-600 shadow-sm font-black' 
+                                  : 'bg-white border-stone-200 text-stone-700 hover:bg-red-50 text-[11px]'
+                              }`}
+                            >
+                              <span className="font-bold block leading-none">{item.l}</span>
+                              <span className={`text-[8px] block mt-0.5 ${Math.abs(protFactor - item.f) < 0.05 ? 'text-red-100' : 'text-stone-400'}`}>{item.sub}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quick Action Button */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('nutrition_auto')}
+                        className="w-full py-2 text-xs font-black text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
+                      >
+                        <span>🥗</span>
+                        <span>View Full Science Breakdown (Tool)</span>
+                        <span>➔</span>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -11981,6 +12122,198 @@
             <div className="lg:col-span-7 bg-fm-card p-6 rounded-2xl border border-fm-border shadow-fm-card flex flex-col justify-between">
               {/* Dynamic Tab Calculation Content */}
               <div>
+                {/* Hero Quick-Jump Banner for Automatic Daily Nutrition by Weight */}
+                {activeTab !== 'nutrition_auto' && (
+                  <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xl">🥗</span>
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider">Automatic Daily Nutrition by Weight</h4>
+                        <p className="text-[11px] text-red-100 font-medium">
+                          Based on {weight} kg: {Math.round(weight * protFactor)}g Protein • {Calculations.fiberReq(age, sex, Calculations.tdee(Calculations.bmr(weight, height, age, sex), activity))}g Fiber • {(weight * 0.035).toFixed(1)}L Water
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('nutrition_auto')}
+                      className="px-3 py-1.5 rounded-lg bg-white text-red-700 hover:bg-red-50 text-xs font-black transition-all shadow-xs flex-shrink-0"
+                    >
+                      View Grams ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* FEATURED: AUTOMATIC DAILY NUTRITION BLUEPRINT BY BODY WEIGHT */}
+                {activeTab === 'nutrition_auto' && (() => {
+                  const curBmr = Calculations.bmr(weight, height, age, sex);
+                  const curTdee = Calculations.tdee(curBmr, activity);
+                  const curGoal = Calculations.calorieGoal(curTdee, user.fitnessGoal || 'fat_loss', sex);
+                  const targetCal = curGoal.target;
+                  const pG = Math.round(weight * protFactor);
+                  const fiberG = Calculations.fiberReq(age, sex, curTdee);
+                  const fatG = Math.round(weight * 0.9);
+                  const carbG = Math.max(50, Math.round((targetCal - (pG * 4 + fatG * 9)) / 4));
+                  const waterL = (weight * 0.035).toFixed(1);
+                  const waterGlasses = Math.round(weight * 35 / 250);
+                  const meal4P = Math.round(pG / 4);
+
+                  return (
+                    <div className="space-y-5 animate-fade-in">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-fm-border pb-3">
+                        <div>
+                          <span className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
+                            <span>🥗</span>
+                            <span>Automatic Nutrition Target Generator</span>
+                          </span>
+                          <h2 className="text-xl font-black text-fm-text">Daily Grams to Eat (For {weight} kg Body Weight)</h2>
+                        </div>
+                        <span className="text-xs font-black px-3 py-1 rounded-full bg-red-100 text-red-700 border border-red-300">
+                          Target: {targetCal} kcal / day
+                        </span>
+                      </div>
+
+                      {/* 6 Key Macro Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {/* Protein */}
+                        <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-center space-y-1 shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-red-700 block">🥩 Daily Protein</span>
+                          <span className="text-3xl font-black text-red-600">{pG} <span className="text-sm">g/day</span></span>
+                          <span className="text-[11px] font-bold text-stone-600 block">{protFactor} g/kg • {pG * 4} kcal</span>
+                          <span className="text-[10px] text-red-700 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
+                            ~{meal4P}g across 4 meals (MPS Leucine ✓)
+                          </span>
+                        </div>
+
+                        {/* Fiber */}
+                        <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-center space-y-1 shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">🌾 Daily Fiber</span>
+                          <span className="text-3xl font-black text-emerald-700">{fiberG} <span className="text-sm">g/day</span></span>
+                          <span className="text-[11px] font-bold text-stone-600 block">14g per 1000 kcal intake</span>
+                          <span className="text-[10px] text-emerald-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
+                            Gut Motility & Glucose Blunting
+                          </span>
+                        </div>
+
+                        {/* Carbohydrates */}
+                        <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-center space-y-1 shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">🍚 Carbohydrates</span>
+                          <span className="text-3xl font-black text-amber-600">{carbG} <span className="text-sm">g/day</span></span>
+                          <span className="text-[11px] font-bold text-stone-600 block">~{Math.round((carbG / weight) * 10) / 10} g/kg • {carbG * 4} kcal</span>
+                          <span className="text-[10px] text-amber-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
+                            Clean Training Glycogen
+                          </span>
+                        </div>
+
+                        {/* Healthy Fats */}
+                        <div className="p-4 rounded-xl bg-orange-50 border-2 border-orange-300 text-center space-y-1 shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-orange-800 block">🥑 Healthy Fats</span>
+                          <span className="text-3xl font-black text-orange-600">{fatG} <span className="text-sm">g/day</span></span>
+                          <span className="text-[11px] font-bold text-stone-600 block">0.9 g/kg • {fatG * 9} kcal</span>
+                          <span className="text-[10px] text-orange-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
+                            Hormone Synthesis & Joints
+                          </span>
+                        </div>
+
+                        {/* Water Intake */}
+                        <div className="p-4 rounded-xl bg-blue-50 border-2 border-blue-300 text-center space-y-1 shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 block">💧 Water Intake</span>
+                          <span className="text-3xl font-black text-blue-600">{waterL} <span className="text-sm">L/day</span></span>
+                          <span className="text-[11px] font-bold text-stone-600 block">35 ml/kg baseline</span>
+                          <span className="text-[10px] text-blue-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
+                            ~{waterGlasses} glasses (250ml)
+                          </span>
+                        </div>
+
+                        {/* Total Calorie Target */}
+                        <div className="p-4 rounded-xl bg-purple-50 border-2 border-purple-300 text-center space-y-1 shadow-sm">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 block">🔥 Calorie Target</span>
+                          <span className="text-3xl font-black text-purple-600">{targetCal} <span className="text-sm">kcal</span></span>
+                          <span className="text-[11px] font-bold text-stone-600 block">TDEE: {curTdee} kcal</span>
+                          <span className="text-[10px] text-purple-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
+                            {curGoal.adj < 0 ? 'Fat Loss Deficit (-400)' : curGoal.adj > 0 ? 'Muscle Surplus (+250)' : 'Maintenance'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Whole Food Blueprint to hit these exact grams today */}
+                      <div className="p-4 rounded-xl bg-fm-surfaceSubtle border border-fm-border space-y-3">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-fm-text flex items-center gap-2">
+                          <span>🍽️</span>
+                          <span>Whole Food Blueprint to Hit These Exact Grams Today</span>
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <div className="p-3 rounded-lg bg-white border border-fm-border space-y-1">
+                            <span className="font-extrabold text-red-700 block">🥩 How to Hit {pG}g Protein:</span>
+                            <p className="text-fm-muted text-[11px] leading-relaxed">
+                              • 3 whole eggs (18g protein)<br/>
+                              • 150g grilled chicken breast or 150g paneer (36–38g protein)<br/>
+                              • 1 cup cooked lentils (dal) or Greek yogurt (18–20g protein)<br/>
+                              • 1 scoop whey protein or 50g soya chunks (25–28g protein)
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-white border border-fm-border space-y-1">
+                            <span className="font-extrabold text-emerald-700 block">🌾 How to Hit {fiberG}g Fiber:</span>
+                            <p className="text-fm-muted text-[11px] leading-relaxed">
+                              • 1 cup cooked oats / rolled oats (8g fiber)<br/>
+                              • 1 medium apple with peel or pear (4.5g fiber)<br/>
+                              • 1 cup cooked chickpeas / rajma / beans (12g fiber)<br/>
+                              • 1 bowl steamed broccoli or raw vegetable salad (6g fiber)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4-Meal Daily Breakdown Table */}
+                      <div className="p-4 rounded-xl bg-white border border-fm-border shadow-xs space-y-2">
+                        <h4 className="text-xs font-black text-fm-text uppercase tracking-wider">Per-Meal Distribution Schedule</h4>
+                        <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
+                            <span className="font-extrabold text-stone-800 block text-[11px]">Breakfast</span>
+                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
+                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.3)}g Fiber</span>
+                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.25)}g C • {Math.round(fatG * 0.25)}g F</span>
+                          </div>
+                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
+                            <span className="font-extrabold text-stone-800 block text-[11px]">Lunch</span>
+                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
+                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.35)}g Fiber</span>
+                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.35)}g C • {Math.round(fatG * 0.3)}g F</span>
+                          </div>
+                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
+                            <span className="font-extrabold text-stone-800 block text-[11px]">Post-Workout</span>
+                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
+                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.1)}g Fiber</span>
+                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.25)}g C • {Math.round(fatG * 0.15)}g F</span>
+                          </div>
+                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
+                            <span className="font-extrabold text-stone-800 block text-[11px]">Dinner</span>
+                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
+                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.25)}g Fiber</span>
+                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.15)}g C • {Math.round(fatG * 0.3)}g F</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => navigateTo('diet-planner')}
+                          className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-md transition-all text-center"
+                        >
+                          🤖 Open AI Diet Planner with These Grams ➔
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigateTo('foods')}
+                          className="py-2.5 px-4 rounded-xl border border-fm-border bg-fm-surfaceSubtle hover:bg-fm-border text-fm-text font-bold text-xs"
+                        >
+                          Explore Food Database
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {activeTab === 'bmi' && (() => {
                   const res = Calculations.bmi(weight, height);
                   const bmiClamped = Math.min(40, Math.max(15, res.val));
@@ -12412,14 +12745,35 @@
                 })()}
 
                 {activeTab === 'fiber' && (() => {
-                  const fib = Calculations.fiberReq(age, sex, 2200);
+                  const curBmr = Calculations.bmr(weight, height, age, sex);
+                  const curTdee = Calculations.tdee(curBmr, activity);
+                  const fib = Calculations.fiberReq(age, sex, curTdee);
                   return (
-                    <div>
-                      <span className="text-xs font-bold text-fm-forest uppercase tracking-wider">Tool 10: Daily Fiber Requirement</span>
-                      <div className="my-4 p-5 rounded-2xl bg-fm-surfaceSubtle border border-fm-border text-center">
-                        <span className="text-4xl font-extrabold text-fm-forest">{fib} <span className="text-lg">g / day</span></span>
-                        <span className="text-xs font-semibold text-fm-muted block mt-1">Dietary Guidelines Standard for your profile</span>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-fm-border pb-2">
+                        <span className="text-xs font-bold text-fm-forest uppercase tracking-wider">Tool 10: Daily Fiber Requirement</span>
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                          {fib} g / day ({weight} kg bodyweight)
+                        </span>
                       </div>
+
+                      <div className="p-5 rounded-2xl bg-fm-surfaceSubtle border border-fm-border text-center">
+                        <span className="text-4xl font-extrabold text-emerald-700">{fib} <span className="text-lg">g / day</span></span>
+                        <span className="text-xs font-semibold text-fm-muted block mt-1.5">
+                          Calculated at 14g fiber per 1,000 kcal based on your actual TDEE ({curTdee} kcal)
+                        </span>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-1.5">
+                        <span className="font-extrabold text-emerald-900 block">🌿 High-Fiber Food Sources:</span>
+                        <p className="text-emerald-800 text-[11px] leading-relaxed">
+                          • 1 cup Rolled Oats (8g fiber)<br/>
+                          • 1 cup Cooked Lentils / Chana (15g fiber)<br/>
+                          • 1 Medium Apple with skin (4.5g fiber)<br/>
+                          • 1 cup Steamed Broccoli (5g fiber)
+                        </p>
+                      </div>
+
                       <p className="text-xs text-fm-muted">
                         Incorporate both soluble fiber (oats, beans) to regulate blood glucose and insoluble fiber (whole grains, raw vegetables) for optimal gut motility.
                       </p>
