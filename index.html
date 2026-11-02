@@ -10313,7 +10313,7 @@
         localStorage.setItem('fm_audit_logs', JSON.stringify(auditLogs));
       }, [auditLogs]);
 
-      // URL Hash Router synchronization
+      // URL Hash Router synchronization & Secret Admin Key Shortcut (Ctrl+Shift+A or Alt+A)
       useEffect(() => {
         const handleHashChange = () => {
           const hash = window.location.hash.replace('#/', '').replace('#', '');
@@ -10323,7 +10323,21 @@
         };
         handleHashChange();
         window.addEventListener('hashchange', handleHashChange);
-        return () => window.removeEventListener('hashchange', handleHashChange);
+
+        // Secret Administrator Portal Shortcut (Ctrl+Shift+A or Alt+A)
+        const handleKeyDown = (e) => {
+          if ((e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) ||
+              (e.altKey && (e.key === 'A' || e.key === 'a'))) {
+            e.preventDefault();
+            navigateTo('admin-login');
+          }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+          window.removeEventListener('hashchange', handleHashChange);
+          window.removeEventListener('keydown', handleKeyDown);
+        };
       }, []);
 
       const navigateTo = (route) => {
