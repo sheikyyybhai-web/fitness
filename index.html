@@ -12144,7 +12144,8 @@
     // VIEW 2: BODY COMPOSITION CALCULATORS (12 Comprehensive Tools)
     // =========================================================================
     function CalculatorsView({ user, onSaveResult, history, navigateTo, displayWeight, displayHeight, isMetric }) {
-      const [activeTab, setActiveTab] = useState('bmi');
+      const [activeTab, setActiveTab] = useState('nutrition_auto');
+      const [dietPref, setDietPref] = useState('all'); // 'all' | 'veg' | 'vegan'
 
       // Shared Inputs
       const [weight, setWeight] = useState(user.currentWeightKg);
@@ -12166,21 +12167,21 @@
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-fm-border pb-4">
             <div>
-              <h1 className="text-2xl font-extrabold text-fm-text">Body Composition & Metabolic Tools</h1>
-              <p className="text-xs text-fm-muted">12 scientifically documented formulas with transparent clinical references.</p>
+              <h1 className="text-xl sm:text-2xl font-black text-fm-text">Body Composition & Food Intake Calculator</h1>
+              <p className="text-xs text-fm-muted">Daily food intake & macronutrient estimates based on body weight with 12 scientific clinical formulas.</p>
             </div>
             {saveNotice && (
-              <span className="text-xs font-bold text-green-800 bg-green-100 px-3 py-1 rounded-full animate-fade-in">
-                Calculation Saved to History!
+              <span className="text-xs font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-full animate-fade-in">
+                ✓ Calculation Saved to History!
               </span>
             )}
           </div>
 
-          {/* Calculator Tool Navigation Tabs */}
+          {/* Calculator Navigation Tabs */}
           <div className="flex overflow-x-auto gap-1.5 pb-2 border-b border-fm-border">
             {[
-              { id: 'all_12', label: '📊 All 12 Clinical Results Board' },
-              { id: 'nutrition_auto', label: '🥗 Daily Grams by Weight' },
+              { id: 'nutrition_auto', label: '🥗 Food Intake by Weight' },
+              { id: 'all_12', label: '📊 12 Clinical Results' },
               { id: 'bmi', label: '1. BMI' },
               { id: 'bmr', label: '2. BMR' },
               { id: 'tdee', label: '3. TDEE' },
@@ -12189,10 +12190,10 @@
               { id: 'bodyfat', label: '6. Body Fat %' },
               { id: 'refweight', label: '7. Ref. Weight' },
               { id: 'whtr', label: '8. Waist/Height' },
-              { id: 'protein', label: '9. Protein Req.' },
-              { id: 'fiber', label: '10. Fiber Req.' },
-              { id: 'calories', label: '11. Calorie Goal' },
-              { id: 'macros', label: '12. Macro Planner' }
+              { id: 'protein', label: '9. Protein' },
+              { id: 'fiber', label: '10. Fiber' },
+              { id: 'calories', label: '11. Calories' },
+              { id: 'macros', label: '12. Macros' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -12242,98 +12243,33 @@
                 </div>
               </div>
 
-              {/* LIVE HOW MUCH KG OVER SHOW MONITOR CARD */}
+              {/* Clean Compact Weight Status Indicator */}
               {(() => {
                 const hM = (height || 178) / 100;
                 const curW = parseFloat(weight);
-                if (!hM || hM <= 0 || !curW || curW <= 0) {
-                  return (
-                    <div className="p-4 rounded-xl border border-dashed border-stone-300 text-center text-xs text-fm-muted">
-                      Enter your body weight above to see your overweight analysis.
-                    </div>
-                  );
-                }
+                if (!hM || hM <= 0 || !curW || curW <= 0) return null;
                 const minHealthyKg = Math.round(18.5 * hM * hM * 10) / 10;
                 const maxHealthyKg = Math.round(24.9 * hM * hM * 10) / 10;
                 const isOver = curW > maxHealthyKg;
                 const isUnder = curW < minHealthyKg;
-                const overKg = Math.round((curW - maxHealthyKg) * 10) / 10;
-                const overLb = Math.round(overKg * 2.20462 * 10) / 10;
-                const underKg = Math.round((minHealthyKg - curW) * 10) / 10;
-                const underLb = Math.round(underKg * 2.20462 * 10) / 10;
-                const weeksToLose = Math.ceil(overKg / 0.5);
-
+                const diff = Math.abs(Math.round((curW - (isOver ? maxHealthyKg : minHealthyKg)) * 10) / 10);
                 return (
-                  <div className={`p-4 rounded-xl border transition-all ${
-                    isOver 
-                      ? 'bg-gradient-to-r from-amber-50 to-red-50 border-amber-300 shadow-sm' 
-                      : isUnder 
-                        ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                        : 'bg-emerald-50 border-emerald-200 shadow-sm'
+                  <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                    isOver ? 'bg-red-950/20 border-red-500/30 text-red-400' :
+                    isUnder ? 'bg-blue-950/20 border-blue-500/30 text-blue-400' :
+                    'bg-emerald-950/20 border-emerald-500/30 text-emerald-400'
                   }`}>
-                    <div className="flex items-center justify-between border-b pb-2 mb-2 border-current/15">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-fm-muted flex items-center gap-1.5">
-                        <span>{isOver ? '⚖️' : isUnder ? 'ℹ️' : '✅'}</span>
-                        <span>HOW MUCH KG OVER SHOW</span>
+                    <div>
+                      <span className="font-bold block">
+                        {isOver ? `+${diff} kg above healthy range` : isUnder ? `-${diff} kg below healthy range` : 'Optimal healthy weight'}
                       </span>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${
-                        isOver ? 'bg-red-600 text-white' : isUnder ? 'bg-blue-600 text-white' : 'bg-emerald-700 text-white'
-                      }`}>
-                        {isOver ? 'OVERWEIGHT' : isUnder ? 'UNDERWEIGHT' : 'NORMAL WEIGHT'}
+                      <span className="text-[10px] text-fm-muted">
+                        Reference Range: {minHealthyKg} – {maxHealthyKg} kg
                       </span>
                     </div>
-
-                    {isOver ? (
-                      <div className="space-y-2">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-black text-red-600">+{overKg} kg</span>
-                          <span className="text-xs font-black text-amber-900 uppercase tracking-tight">OVERWEIGHT</span>
-                          <span className="text-xs text-fm-muted font-bold">(+{overLb} lbs)</span>
-                        </div>
-                        <p className="text-xs text-amber-900 leading-snug font-medium">
-                          You are exactly <strong>{overKg} kg OVER</strong> your healthy normal weight ceiling ({maxHealthyKg} kg).
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
-                          <div className="p-2 rounded-lg bg-white/90 border border-amber-200 text-center">
-                            <span className="text-[9px] font-bold text-fm-muted block">Healthy Max Limit:</span>
-                            <strong className="text-fm-text">{maxHealthyKg} kg</strong>
-                          </div>
-                          <div className="p-2 rounded-lg bg-white/90 border border-amber-200 text-center">
-                            <span className="text-[9px] font-bold text-fm-muted block">How Much to Lose:</span>
-                            <strong className="text-red-600 font-extrabold">-{overKg} kg (~{weeksToLose} wks)</strong>
-                          </div>
-                        </div>
-                      </div>
-                    ) : isUnder ? (
-                      <div className="space-y-1.5">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-black text-blue-600">-{underKg} kg</span>
-                          <span className="text-xs font-black text-blue-900 uppercase tracking-tight">UNDERWEIGHT</span>
-                          <span className="text-xs text-fm-muted font-bold">(-{underLb} lbs)</span>
-                        </div>
-                        <p className="text-xs text-blue-900 leading-snug font-medium">
-                          You are <strong>{underKg} kg UNDER</strong> the healthy normal threshold ({minHealthyKg} kg).
-                        </p>
-                        <div className="p-2 rounded-lg bg-white/90 border border-blue-200 text-center text-xs">
-                          <span className="text-[9px] font-bold text-fm-muted block">How Much to Gain:</span>
-                          <strong className="text-blue-700 font-extrabold">+{underKg} kg to reach {minHealthyKg} kg</strong>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-3xl font-black text-emerald-700">0 kg</span>
-                          <span className="text-xs font-black text-emerald-800 uppercase tracking-tight">OVER (HEALTHY RANGE)</span>
-                        </div>
-                        <p className="text-xs text-emerald-800 leading-snug font-medium">
-                          You are in the optimal WHO normal weight range ({minHealthyKg} – {maxHealthyKg} kg).
-                        </p>
-                        <div className="p-2 rounded-lg bg-white/90 border border-emerald-200 text-center text-xs">
-                          <span className="text-[9px] font-bold text-fm-muted block">Safety Margin to Overweight:</span>
-                          <strong className="text-emerald-700 font-extrabold">{Math.round((maxHealthyKg - curW) * 10) / 10} kg below limit</strong>
-                        </div>
-                      </div>
-                    )}
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-current/10">
+                      {isOver ? 'Overweight' : isUnder ? 'Underweight' : 'Normal Weight'}
+                    </span>
                   </div>
                 );
               })()}
@@ -12345,7 +12281,7 @@
                     type="number" 
                     value={age} 
                     onChange={e => setAge(parseInt(e.target.value) || 0)} 
-                    className="w-full px-3 py-2 text-sm font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle"
+                    className="w-full px-3 py-2 text-sm font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle text-fm-text"
                   />
                 </div>
                 <div>
@@ -12353,7 +12289,7 @@
                   <select 
                     value={sex} 
                     onChange={e => setSex(e.target.value)}
-                    className="w-full px-3 py-2 text-sm font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle"
+                    className="w-full px-3 py-2 text-sm font-bold rounded-lg border border-fm-border bg-fm-surfaceSubtle text-fm-text"
                   >
                     <option value="male">Male</option>
                     <option value="female">Female</option>
@@ -12361,22 +12297,22 @@
                 </div>
               </div>
 
-              {/* Simple Week-Wise Workout / Activity Level Selector */}
-              <div className="pt-2 border-t border-red-100">
+              {/* Activity Level Selector */}
+              <div className="pt-2 border-t border-fm-border">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-bold text-fm-text">Weekly Workout Frequency</label>
-                  <span className="text-[10px] font-extrabold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full border border-red-300">
+                  <label className="text-xs font-bold text-fm-text">Weekly Activity</label>
+                  <span className="text-[10px] font-extrabold text-red-400 bg-red-950/30 px-2 py-0.5 rounded-full border border-red-500/30">
                     {activity === 'sedentary' && '0 Days / week'}
                     {activity === 'lightly_active' && '1–2 Days / week'}
                     {activity === 'moderately_active' && '3–4 Days / week'}
                     {activity === 'very_active' && '5–6 Days / week'}
-                    {activity === 'extremely_active' && 'Daily (7 Days / week)'}
+                    {activity === 'extremely_active' && 'Daily (7 Days)'}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-5 gap-1.5">
                   {[
-                    { id: 'sedentary', label: '0 Days', sub: 'Desk Job' },
+                    { id: 'sedentary', label: '0 Days', sub: 'Desk' },
                     { id: 'lightly_active', label: '1–2 Days', sub: 'Light' },
                     { id: 'moderately_active', label: '3–4 Days', sub: 'Regular' },
                     { id: 'very_active', label: '5–6 Days', sub: 'Hard' },
@@ -12388,127 +12324,28 @@
                       onClick={() => setActivity(lvl.id)}
                       className={`p-2 rounded-xl text-center border transition-all ${
                         activity === lvl.id 
-                          ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-600/30 ring-2 ring-red-400/50' 
-                          : 'bg-white border-stone-200 text-stone-700 hover:bg-red-50 hover:border-red-200'
+                          ? 'bg-red-600 text-white border-red-600 shadow-md font-extrabold' 
+                          : 'bg-[var(--bg-elevated)] border-fm-border text-fm-text hover:bg-[var(--bg-card)]'
                       }`}
                     >
-                      <span className="text-xs font-extrabold block">{lvl.label}</span>
-                      <span className={`text-[9px] block ${activity === lvl.id ? 'text-red-100' : 'text-stone-400'}`}>{lvl.sub}</span>
+                      <span className="text-xs font-bold block">{lvl.label}</span>
+                      <span className={`text-[9px] block ${activity === lvl.id ? 'text-red-100' : 'text-fm-muted'}`}>{lvl.sub}</span>
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-fm-muted mt-2">Zero tape measurements required. Universal clinical calculation.</p>
               </div>
 
-              {/* AUTOMATIC DAILY NUTRITION TARGETS BASED ON YOUR BODY WEIGHT */}
-              <div className="pt-3 border-t-2 border-red-200 space-y-3">
-                {(() => {
-                  const curW = parseFloat(weight) || 0;
-                  const curBmr = Calculations.bmr(curW || 70, height || 178, age || 28, sex || 'male');
-                  const curTdee = Calculations.tdee(curBmr, activity || 'moderately_active');
-                  const pG = Math.round(curW * protFactor);
-                  const fiberG = Calculations.fiberReq(age, sex, curTdee);
-                  const fatG = Math.round(curW * 0.9);
-                  const carbG = Math.max(50, Math.round((curTdee - 400 - (pG * 4 + fatG * 9)) / 4));
-                  const waterL = (curW * 0.035).toFixed(1);
-                  const waterGlasses = Math.round(curW * 35 / 250);
-
-                  return (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-black text-fm-text flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
-                          <span>Daily Nutrition by Body Weight</span>
-                        </label>
-                        <span className="text-[10px] font-black text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full border border-red-300">
-                          {curW} kg Bodyweight
-                        </span>
-                      </div>
-
-                      {/* 4 Primary Nutrition Stat Cards */}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {/* Protein */}
-                        <div className="p-2.5 rounded-xl bg-red-50 border border-red-200">
-                          <span className="text-[10px] font-bold text-red-700 block">🥩 Protein to Eat</span>
-                          <div className="flex items-baseline gap-1 mt-0.5">
-                            <strong className="text-lg font-black text-red-600">{pG}g</strong>
-                            <span className="text-[10px] text-stone-600">({protFactor} g/kg)</span>
-                          </div>
-                          <span className="text-[9px] text-stone-500 block">~{Math.round(pG / 4)}g / meal (MPS Leucine ✓)</span>
-                        </div>
-
-                        {/* Fiber */}
-                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-                          <span className="text-[10px] font-bold text-emerald-800 block">🌾 Fiber to Eat</span>
-                          <div className="flex items-baseline gap-1 mt-0.5">
-                            <strong className="text-lg font-black text-emerald-700">{fiberG}g</strong>
-                            <span className="text-[10px] text-stone-600">/ day</span>
-                          </div>
-                          <span className="text-[9px] text-stone-500 block">14g / 1000 kcal intake</span>
-                        </div>
-
-                        {/* Carbs */}
-                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200">
-                          <span className="text-[10px] font-bold text-amber-800 block">🍚 Carbs to Eat</span>
-                          <div className="flex items-baseline gap-1 mt-0.5">
-                            <strong className="text-lg font-black text-amber-700">{carbG}g</strong>
-                            <span className="text-[10px] text-stone-600">/ day</span>
-                          </div>
-                          <span className="text-[9px] text-stone-500 block">Training Energy Glycogen</span>
-                        </div>
-
-                        {/* Water */}
-                        <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200">
-                          <span className="text-[10px] font-bold text-blue-800 block">💧 Water to Drink</span>
-                          <div className="flex items-baseline gap-1 mt-0.5">
-                            <strong className="text-lg font-black text-blue-600">{waterL}L</strong>
-                            <span className="text-[10px] text-stone-600">/ day</span>
-                          </div>
-                          <span className="text-[9px] text-stone-500 block">~{waterGlasses} glasses (250ml)</span>
-                        </div>
-                      </div>
-
-                      {/* Quick Protein Multiplier Presets */}
-                      <div className="space-y-1">
-                        <span className="text-[10px] font-bold text-stone-600 block">Select Protein Target (g/kg):</span>
-                        <div className="grid grid-cols-5 gap-1">
-                          {[
-                            { f: 0.8, l: '0.8g', sub: 'RDA' },
-                            { f: 1.2, l: '1.2g', sub: 'Cardio' },
-                            { f: 1.6, l: '1.6g', sub: 'Morton 2018' },
-                            { f: 2.0, l: '2.0g', sub: 'Hyper' },
-                            { f: 2.4, l: '2.4g', sub: 'Deficit' }
-                          ].map(item => (
-                            <button
-                              key={item.f}
-                              type="button"
-                              onClick={() => setProtFactor(item.f)}
-                              className={`p-1 rounded-lg text-center border transition-all ${
-                                Math.abs(protFactor - item.f) < 0.05 
-                                  ? 'bg-red-600 text-white border-red-600 shadow-sm font-black' 
-                                  : 'bg-white border-stone-200 text-stone-700 hover:bg-red-50 text-[11px]'
-                              }`}
-                            >
-                              <span className="font-bold block leading-none">{item.l}</span>
-                              <span className={`text-[8px] block mt-0.5 ${Math.abs(protFactor - item.f) < 0.05 ? 'text-red-100' : 'text-stone-400'}`}>{item.sub}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Quick Action Button */}
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('nutrition_auto')}
-                        className="w-full py-2 text-xs font-black text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5"
-                      >
-                        <span>🥗</span>
-                        <span>View Full Science Breakdown (Tool)</span>
-                        <span>➔</span>
-                      </button>
-                    </div>
-                  );
-                })()}
+              {/* Action: Open Daily Food Intake Guide */}
+              <div className="pt-2 border-t border-fm-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('nutrition_auto')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  <span>🥗</span>
+                  <span>Estimate Daily Food Intake ({weight} kg)</span>
+                  <span>➔</span>
+                </button>
               </div>
             </div>
 
@@ -12750,198 +12587,349 @@
                   );
                 })()}
 
-                {/* Hero Quick-Jump Banner for Automatic Daily Nutrition by Weight */}
-                {activeTab !== 'nutrition_auto' && (
-                  <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 text-white flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xl">🥗</span>
-                      <div>
-                        <h4 className="text-xs font-black uppercase tracking-wider">Automatic Daily Nutrition by Weight</h4>
-                        <p className="text-[11px] text-red-100 font-medium">
-                          Based on {weight} kg: {Math.round(weight * protFactor)}g Protein • {Calculations.fiberReq(age, sex, Calculations.tdee(Calculations.bmr(weight, height, age, sex), activity))}g Fiber • {(weight * 0.035).toFixed(1)}L Water
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('nutrition_auto')}
-                      className="px-3 py-1.5 rounded-lg bg-white text-red-700 hover:bg-red-50 text-xs font-black transition-all shadow-xs flex-shrink-0"
-                    >
-                      View Grams ➔
-                    </button>
-                  </div>
-                )}
-
-                {/* FEATURED: AUTOMATIC DAILY NUTRITION BLUEPRINT BY BODY WEIGHT */}
+                {/* DAILY FOOD INTAKE ESTIMATE CALCULATOR BASED ON BODY WEIGHT */}
                 {activeTab === 'nutrition_auto' && (() => {
-                  const curBmr = Calculations.bmr(weight, height, age, sex);
-                  const curTdee = Calculations.tdee(curBmr, activity);
-                  const curGoal = Calculations.calorieGoal(curTdee, user.fitnessGoal || 'fat_loss', sex);
+                  const curW = parseFloat(weight) || 70;
+                  const curBmr = Calculations.bmr(curW, height || 178, age || 28, sex || 'male');
+                  const curTdee = Calculations.tdee(curBmr, activity || 'moderately_active');
+                  const curGoal = Calculations.calorieGoal(curTdee, user.fitnessGoal || 'fat_loss', sex || 'male');
                   const targetCal = curGoal.target;
-                  const pG = Math.round(weight * protFactor);
-                  const fiberG = Calculations.fiberReq(age, sex, curTdee);
-                  const fatG = Math.round(weight * 0.9);
+                  const pG = Math.round(curW * protFactor);
+                  const fiberG = Calculations.fiberReq(age || 28, sex || 'male', curTdee);
+                  const fatG = Math.round(curW * 0.9);
                   const carbG = Math.max(50, Math.round((targetCal - (pG * 4 + fatG * 9)) / 4));
-                  const waterL = (weight * 0.035).toFixed(1);
-                  const waterGlasses = Math.round(weight * 35 / 250);
-                  const meal4P = Math.round(pG / 4);
+                  const waterL = (curW * 0.035).toFixed(1);
+                  const waterGlasses = Math.round(curW * 35 / 250);
+                  const mealP = Math.round(pG / 4);
 
                   return (
                     <div className="space-y-5 animate-fade-in">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-fm-border pb-3">
+                      {/* Tool Header */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-fm-border pb-3">
                         <div>
-                          <span className="text-xs font-bold text-red-600 uppercase tracking-wider flex items-center gap-1.5">
-                            <span>🥗</span>
-                            <span>Automatic Nutrition Target Generator</span>
-                          </span>
-                          <h2 className="text-xl font-black text-fm-text">Daily Grams to Eat (For {weight} kg Body Weight)</h2>
-                        </div>
-                        <span className="text-xs font-black px-3 py-1 rounded-full bg-red-100 text-red-700 border border-red-300">
-                          Target: {targetCal} kcal / day
-                        </span>
-                      </div>
-
-                      {/* 6 Key Macro Cards */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {/* Protein */}
-                        <div className="p-4 rounded-xl bg-red-50 border-2 border-red-300 text-center space-y-1 shadow-sm">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-red-700 block">🥩 Daily Protein</span>
-                          <span className="text-3xl font-black text-red-600">{pG} <span className="text-sm">g/day</span></span>
-                          <span className="text-[11px] font-bold text-stone-600 block">{protFactor} g/kg • {pG * 4} kcal</span>
-                          <span className="text-[10px] text-red-700 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
-                            ~{meal4P}g across 4 meals (MPS Leucine ✓)
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-red-500 uppercase tracking-wider">Weight-Based Nutrition Engine</span>
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-red-900/30 text-red-400 border border-red-500/30">
+                              {curW} kg Body Weight
+                            </span>
+                          </div>
+                          <h2 className="text-xl font-black text-fm-text">Daily Food Intake Guide (For {curW} kg)</h2>
+                          <p className="text-xs text-fm-muted mt-0.5">
+                            Estimated daily grams and specific food types to intake each day based on your body weight.
+                          </p>
                         </div>
 
-                        {/* Fiber */}
-                        <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-300 text-center space-y-1 shadow-sm">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 block">🌾 Daily Fiber</span>
-                          <span className="text-3xl font-black text-emerald-700">{fiberG} <span className="text-sm">g/day</span></span>
-                          <span className="text-[11px] font-bold text-stone-600 block">14g per 1000 kcal intake</span>
-                          <span className="text-[10px] text-emerald-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
-                            Gut Motility & Glucose Blunting
-                          </span>
-                        </div>
-
-                        {/* Carbohydrates */}
-                        <div className="p-4 rounded-xl bg-amber-50 border-2 border-amber-300 text-center space-y-1 shadow-sm">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 block">🍚 Carbohydrates</span>
-                          <span className="text-3xl font-black text-amber-600">{carbG} <span className="text-sm">g/day</span></span>
-                          <span className="text-[11px] font-bold text-stone-600 block">~{Math.round((carbG / weight) * 10) / 10} g/kg • {carbG * 4} kcal</span>
-                          <span className="text-[10px] text-amber-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
-                            Clean Training Glycogen
-                          </span>
-                        </div>
-
-                        {/* Healthy Fats */}
-                        <div className="p-4 rounded-xl bg-orange-50 border-2 border-orange-300 text-center space-y-1 shadow-sm">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-orange-800 block">🥑 Healthy Fats</span>
-                          <span className="text-3xl font-black text-orange-600">{fatG} <span className="text-sm">g/day</span></span>
-                          <span className="text-[11px] font-bold text-stone-600 block">0.9 g/kg • {fatG * 9} kcal</span>
-                          <span className="text-[10px] text-orange-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
-                            Hormone Synthesis & Joints
-                          </span>
-                        </div>
-
-                        {/* Water Intake */}
-                        <div className="p-4 rounded-xl bg-blue-50 border-2 border-blue-300 text-center space-y-1 shadow-sm">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 block">💧 Water Intake</span>
-                          <span className="text-3xl font-black text-blue-600">{waterL} <span className="text-sm">L/day</span></span>
-                          <span className="text-[11px] font-bold text-stone-600 block">35 ml/kg baseline</span>
-                          <span className="text-[10px] text-blue-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
-                            ~{waterGlasses} glasses (250ml)
-                          </span>
-                        </div>
-
-                        {/* Total Calorie Target */}
-                        <div className="p-4 rounded-xl bg-purple-50 border-2 border-purple-300 text-center space-y-1 shadow-sm">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 block">🔥 Calorie Target</span>
-                          <span className="text-3xl font-black text-purple-600">{targetCal} <span className="text-sm">kcal</span></span>
-                          <span className="text-[11px] font-bold text-stone-600 block">TDEE: {curTdee} kcal</span>
-                          <span className="text-[10px] text-purple-800 bg-white/90 px-2 py-0.5 rounded-full inline-block font-extrabold mt-1">
-                            {curGoal.adj < 0 ? 'Fat Loss Deficit (-400)' : curGoal.adj > 0 ? 'Muscle Surplus (+250)' : 'Maintenance'}
-                          </span>
+                        {/* Dietary Preference Filter */}
+                        <div className="flex items-center gap-1 bg-[var(--bg-elevated)] p-1 rounded-xl border border-fm-border">
+                          {[
+                            { id: 'all', label: '🍗 All Foods' },
+                            { id: 'veg', label: '🥗 Vegetarian' },
+                            { id: 'vegan', label: '🌱 Vegan' }
+                          ].map(d => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setDietPref(d.id)}
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                                dietPref === d.id 
+                                  ? 'bg-red-600 text-white shadow-xs' 
+                                  : 'text-fm-muted hover:text-fm-text'
+                              }`}
+                            >
+                              {d.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Whole Food Blueprint to hit these exact grams today */}
-                      <div className="p-4 rounded-xl bg-fm-surfaceSubtle border border-fm-border space-y-3">
-                        <h3 className="text-xs font-black uppercase tracking-wider text-fm-text flex items-center gap-2">
-                          <span>🍽️</span>
-                          <span>Whole Food Blueprint to Hit These Exact Grams Today</span>
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          <div className="p-3 rounded-lg bg-white border border-fm-border space-y-1">
-                            <span className="font-extrabold text-red-700 block">🥩 How to Hit {pG}g Protein:</span>
-                            <p className="text-fm-muted text-[11px] leading-relaxed">
-                              • 3 whole eggs (18g protein)<br/>
-                              • 150g grilled chicken breast or 150g paneer (36–38g protein)<br/>
-                              • 1 cup cooked lentils (dal) or Greek yogurt (18–20g protein)<br/>
-                              • 1 scoop whey protein or 50g soya chunks (25–28g protein)
+                      {/* 6 Core Daily Intake Targets */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-center">
+                        <div className="p-3 rounded-xl bg-red-950/20 border border-red-500/30">
+                          <span className="text-[10px] font-bold text-red-400 block uppercase">Daily Protein</span>
+                          <span className="text-2xl font-black text-red-400 block">{pG}g</span>
+                          <span className="text-[10px] text-fm-muted">{protFactor} g/kg</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/30">
+                          <span className="text-[10px] font-bold text-emerald-400 block uppercase">Daily Fiber</span>
+                          <span className="text-2xl font-black text-emerald-400 block">{fiberG}g</span>
+                          <span className="text-[10px] text-fm-muted">14g / 1000 kcal</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-950/20 border border-amber-500/30">
+                          <span className="text-[10px] font-bold text-amber-400 block uppercase">Clean Carbs</span>
+                          <span className="text-2xl font-black text-amber-400 block">{carbG}g</span>
+                          <span className="text-[10px] text-fm-muted">Glycogen fuel</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-orange-950/20 border border-orange-500/30">
+                          <span className="text-[10px] font-bold text-orange-400 block uppercase">Healthy Fats</span>
+                          <span className="text-2xl font-black text-orange-400 block">{fatG}g</span>
+                          <span className="text-[10px] text-fm-muted">0.9 g/kg</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
+                          <span className="text-[10px] font-bold text-purple-400 block uppercase">Calorie Target</span>
+                          <span className="text-2xl font-black text-purple-400 block">{targetCal}</span>
+                          <span className="text-[10px] text-fm-muted">kcal / day</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-blue-950/20 border border-blue-500/30">
+                          <span className="text-[10px] font-bold text-blue-400 block uppercase">Hydration</span>
+                          <span className="text-2xl font-black text-blue-400 block">{waterL}L</span>
+                          <span className="text-[10px] text-fm-muted">~{waterGlasses} glasses</span>
+                        </div>
+                      </div>
+
+                      {/* What Type of Food to Intake Per Day (Based on Weight) */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-xs font-black uppercase tracking-wider text-fm-text flex items-center gap-2">
+                            <span>🍽️</span>
+                            <span>What Type of Food to Intake Daily (Based on {curW} kg Weight)</span>
+                          </h3>
+                          <span className="text-[10px] text-fm-muted">
+                            Active Preference: <strong className="text-fm-text capitalize">{dietPref === 'all' ? 'All Foods' : dietPref}</strong>
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                          {/* 1. Protein Food Types */}
+                          <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-red-500/30 space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-fm-border pb-2">
+                              <span className="font-extrabold text-red-400 flex items-center gap-1.5">
+                                <span>🥩</span>
+                                <span>High-Protein Foods</span>
+                              </span>
+                              <span className="font-mono font-bold text-fm-text text-[11px]">{pG}g target</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted">
+                              Specific food types and portions to intake daily for your {curW} kg body weight:
+                            </p>
+                            <div className="space-y-1.5 text-[11px]">
+                              {dietPref === 'all' ? (
+                                <>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 3 Whole Eggs</span>
+                                    <span className="text-red-400 font-bold">18g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 150g Chicken Breast / Fish</span>
+                                    <span className="text-red-400 font-bold">45g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 1 Cup Greek Yogurt / Paneer</span>
+                                    <span className="text-red-400 font-bold">18g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 1 Cup Cooked Dal / Lentils</span>
+                                    <span className="text-red-400 font-bold">18g Protein</span>
+                                  </div>
+                                </>
+                              ) : dietPref === 'veg' ? (
+                                <>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 150g Fresh Paneer</span>
+                                    <span className="text-red-400 font-bold">27g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 1 Cup Greek Yogurt / Curd</span>
+                                    <span className="text-red-400 font-bold">15g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 50g Soya Chunks</span>
+                                    <span className="text-red-400 font-bold">26g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 1.5 Cups Cooked Dal / Rajma</span>
+                                    <span className="text-red-400 font-bold">25g Protein</span>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 150g Firm Tofu</span>
+                                    <span className="text-red-400 font-bold">23g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 50g Soya Chunks</span>
+                                    <span className="text-red-400 font-bold">26g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 1.5 Cups Chickpeas / Dal</span>
+                                    <span className="text-red-400 font-bold">25g Protein</span>
+                                  </div>
+                                  <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                    <span className="font-semibold text-fm-text">• 30g Hemp / Chia Seeds</span>
+                                    <span className="text-red-400 font-bold">10g Protein</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-red-400/90 block pt-1 border-t border-fm-border/50">
+                              ✓ Eat ~{mealP}g per meal across 4 meals (MPS Leucine threshold).
+                            </span>
+                          </div>
+
+                          {/* 2. Fiber & Clean Carb Food Types */}
+                          <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-emerald-500/30 space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-fm-border pb-2">
+                              <span className="font-extrabold text-emerald-400 flex items-center gap-1.5">
+                                <span>🌾</span>
+                                <span>Fiber & Complex Carbs</span>
+                              </span>
+                              <span className="font-mono font-bold text-fm-text text-[11px]">{fiberG}g / {carbG}g</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted">
+                              Specific wholesome carbs and fiber foods to intake daily:
+                            </p>
+                            <div className="space-y-1.5 text-[11px]">
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 1 Cup Rolled Oats</span>
+                                <span className="text-emerald-400 font-bold">8g Fiber • 54g C</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 1.5 Cups Rice or 2 Rotis</span>
+                                <span className="text-emerald-400 font-bold">4g Fiber • 65g C</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 2 Cups Steamed Broccoli/Salad</span>
+                                <span className="text-emerald-400 font-bold">8g Fiber • 12g C</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 1 Apple or 1 Banana</span>
+                                <span className="text-emerald-400 font-bold">4g Fiber • 25g C</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-emerald-400/90 block pt-1 border-t border-fm-border/50">
+                              ✓ Regulates blood sugar, gut microbiome, and athletic energy.
+                            </span>
+                          </div>
+
+                          {/* 3. Healthy Fats & Hydration Food Types */}
+                          <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-orange-500/30 space-y-2.5">
+                            <div className="flex items-center justify-between border-b border-fm-border pb-2">
+                              <span className="font-extrabold text-orange-400 flex items-center gap-1.5">
+                                <span>🥑</span>
+                                <span>Healthy Fats & Water</span>
+                              </span>
+                              <span className="font-mono font-bold text-fm-text text-[11px]">{fatG}g / {waterL}L</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted">
+                              Essential fatty acid foods and hydration intake for hormone balance:
+                            </p>
+                            <div className="space-y-1.5 text-[11px]">
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 1 Handful (25g) Almonds/Walnuts</span>
+                                <span className="text-orange-400 font-bold">14g Healthy Fats</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 1 Tbsp Extra Virgin Olive Oil/Ghee</span>
+                                <span className="text-orange-400 font-bold">14g Healthy Fats</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• 1 Tbsp Chia Seeds / Flax Seeds</span>
+                                <span className="text-orange-400 font-bold">5g Fats (Omega-3)</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[var(--bg-card)] border border-fm-border flex justify-between">
+                                <span className="font-semibold text-fm-text">• {waterL}L Pure Water Daily</span>
+                                <span className="text-blue-400 font-bold">~{waterGlasses} Glasses</span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-orange-400/90 block pt-1 border-t border-fm-border/50">
+                              ✓ Essential for joint lubrication and testosterone/hormone synthesis.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Daily 4-Meal Practical Intake Schedule */}
+                      <div className="p-4 rounded-xl bg-[var(--bg-elevated)] border border-fm-border space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-black text-fm-text uppercase tracking-wider flex items-center gap-2">
+                            <span>📋</span>
+                            <span>Meal-by-Meal Daily Intake Schedule (For {curW} kg)</span>
+                          </h4>
+                          <span className="text-[10px] text-fm-muted">4 Balanced Meals per Day</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                          {/* Meal 1 */}
+                          <div className="p-3 rounded-lg bg-[var(--bg-card)] border border-fm-border space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-extrabold text-fm-text text-[11px]">🌅 Breakfast</span>
+                              <span className="text-[10px] font-bold text-red-400">{mealP}g Protein</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted leading-relaxed">
+                              {dietPref === 'all' ? '3 Whole Eggs + 1 cup Rolled Oats with milk + 1 Banana + 10 Almonds.' :
+                               dietPref === 'veg' ? '100g Paneer + 1 cup Rolled Oats + 1 Banana + 10 Almonds.' :
+                               '100g Tofu scramble + 1 cup Rolled Oats with Soy Milk + 1 Banana + Walnuts.'}
                             </p>
                           </div>
-                          <div className="p-3 rounded-lg bg-white border border-fm-border space-y-1">
-                            <span className="font-extrabold text-emerald-700 block">🌾 How to Hit {fiberG}g Fiber:</span>
-                            <p className="text-fm-muted text-[11px] leading-relaxed">
-                              • 1 cup cooked oats / rolled oats (8g fiber)<br/>
-                              • 1 medium apple with peel or pear (4.5g fiber)<br/>
-                              • 1 cup cooked chickpeas / rajma / beans (12g fiber)<br/>
-                              • 1 bowl steamed broccoli or raw vegetable salad (6g fiber)
+
+                          {/* Meal 2 */}
+                          <div className="p-3 rounded-lg bg-[var(--bg-card)] border border-fm-border space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-extrabold text-fm-text text-[11px]">☀️ Lunch</span>
+                              <span className="text-[10px] font-bold text-red-400">{mealP}g Protein</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted leading-relaxed">
+                              {dietPref === 'all' ? '150g Grilled Chicken / Fish + 1.5 cups Rice or 2 Rotis + 1 cup Dal + Salad.' :
+                               dietPref === 'veg' ? '1.5 cups Dal / Rajma + 50g Soya Chunks + 1.5 cups Rice or 2 Rotis + Green Salad.' :
+                               '1.5 cups Chickpea curry + 1.5 cups Rice or 2 Rotis + Steamed Greens.'}
+                            </p>
+                          </div>
+
+                          {/* Meal 3 */}
+                          <div className="p-3 rounded-lg bg-[var(--bg-card)] border border-fm-border space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-extrabold text-fm-text text-[11px]">🍎 Afternoon Snack</span>
+                              <span className="text-[10px] font-bold text-red-400">{mealP}g Protein</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted leading-relaxed">
+                              {dietPref === 'all' || dietPref === 'veg' ? '1 cup Greek Yogurt or Roasted Chana + 1 Medium Apple + 1 tbsp Chia Seeds.' :
+                               'Roasted Chana + 1 Scoop Pea Protein shake + 1 Apple + Chia Seeds.'}
+                            </p>
+                          </div>
+
+                          {/* Meal 4 */}
+                          <div className="p-3 rounded-lg bg-[var(--bg-card)] border border-fm-border space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="font-extrabold text-fm-text text-[11px]">🌙 Dinner</span>
+                              <span className="text-[10px] font-bold text-red-400">{mealP}g Protein</span>
+                            </div>
+                            <p className="text-[11px] text-fm-muted leading-relaxed">
+                              {dietPref === 'all' ? '150g Fish or Chicken + Steamed Broccoli & Veggies + 1 Sweet Potato or Roti.' :
+                               dietPref === 'veg' ? '120g Grilled Paneer + 1 cup Dal + Steamed Veggies + 1 Roti.' :
+                               '150g Grilled Tofu + Stir-fry Vegetables with Olive Oil + 1 cup Quinoa.'}
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      {/* 4-Meal Daily Breakdown Table */}
-                      <div className="p-4 rounded-xl bg-white border border-fm-border shadow-xs space-y-2">
-                        <h4 className="text-xs font-black text-fm-text uppercase tracking-wider">Per-Meal Distribution Schedule</h4>
-                        <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
-                            <span className="font-extrabold text-stone-800 block text-[11px]">Breakfast</span>
-                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
-                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.3)}g Fiber</span>
-                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.25)}g C • {Math.round(fatG * 0.25)}g F</span>
-                          </div>
-                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
-                            <span className="font-extrabold text-stone-800 block text-[11px]">Lunch</span>
-                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
-                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.35)}g Fiber</span>
-                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.35)}g C • {Math.round(fatG * 0.3)}g F</span>
-                          </div>
-                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
-                            <span className="font-extrabold text-stone-800 block text-[11px]">Post-Workout</span>
-                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
-                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.1)}g Fiber</span>
-                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.25)}g C • {Math.round(fatG * 0.15)}g F</span>
-                          </div>
-                          <div className="p-2.5 rounded-lg bg-stone-50 border border-stone-200">
-                            <span className="font-extrabold text-stone-800 block text-[11px]">Dinner</span>
-                            <span className="font-black text-red-600 block mt-1">{meal4P}g P</span>
-                            <span className="text-[10px] text-emerald-700 block font-bold">{Math.round(fiberG * 0.25)}g Fiber</span>
-                            <span className="text-[10px] text-fm-muted block">{Math.round(carbG * 0.15)}g C • {Math.round(fatG * 0.3)}g F</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-2">
+                      {/* Action Navigation Buttons */}
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
                         <button
                           type="button"
                           onClick={() => navigateTo('diet-planner')}
                           className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-md transition-all text-center"
                         >
-                          🤖 Open AI Diet Planner with These Grams ➔
+                          🤖 Formulate Exact Meal Plan in AI Diet Planner ➔
                         </button>
                         <button
                           type="button"
                           onClick={() => navigateTo('foods')}
-                          className="py-2.5 px-4 rounded-xl border border-fm-border bg-fm-surfaceSubtle hover:bg-fm-border text-fm-text font-bold text-xs"
+                          className="py-2.5 px-4 rounded-xl border border-fm-border bg-[var(--bg-elevated)] hover:bg-[var(--bg-card)] text-fm-text font-bold text-xs"
                         >
-                          Explore Food Database
+                          Explore Full Food Database (40+ Items)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSave('Daily Food Intake Target', { weight: curW, height, age, sex }, { proteinG: pG, fiberG, carbG, fatG, targetCal })}
+                          className="py-2.5 px-4 rounded-xl border border-fm-border bg-[var(--bg-elevated)] hover:bg-[var(--bg-card)] text-fm-text font-bold text-xs"
+                        >
+                          💾 Save to History
                         </button>
                       </div>
                     </div>
                   );
                 })()}
+
                 {activeTab === 'bmi' && (() => {
                   const res = Calculations.bmi(weight, height);
                   const bmiClamped = Math.min(40, Math.max(15, res.val));
